@@ -1,0 +1,109 @@
+<Application x:Class="CrazyVideoTag.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:CrazyVideoTag.Converters"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <converters:ColorStringToBrushConverter x:Key="ColorBrush" />
+        <converters:NullToVisibilityConverter x:Key="NullVisibility" />
+        <converters:TagIdsToDefinitionsConverter x:Key="TagIdsToDefinitions" />
+
+        <SolidColorBrush x:Key="Bg" Color="#111318" />
+        <SolidColorBrush x:Key="PanelBg" Color="#1A1D24" />
+        <SolidColorBrush x:Key="CardBg" Color="#222631" />
+        <SolidColorBrush x:Key="TextMain" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="TextMuted" Color="#CBD5E1" />
+        <SolidColorBrush x:Key="TextStrong" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="Accent" Color="#4F8EF7" />
+        <SolidColorBrush x:Key="BorderSoft" Color="#303644" />
+
+        <Style TargetType="Window">
+            <Setter Property="Background" Value="{StaticResource Bg}" />
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#2B3140" />
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#111318" />
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}" />
+            <Setter Property="Padding" Value="8" />
+        </Style>
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="{StaticResource Bg}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextStrong}" />
+            <Setter Property="Padding" Value="18,9" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="#252B38" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1,1,1,0" CornerRadius="6,6,0,0" Padding="{TemplateBinding Padding}" Margin="2,0">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#34405A" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#2D3445" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Foreground" Value="{StaticResource TextStrong}" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+        </Style>
+
+        <Style TargetType="Expander">
+            <Setter Property="Foreground" Value="{StaticResource TextStrong}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="0,4" />
+        </Style>
+
+        <Style x:Key="TagRowStyle" TargetType="Border">
+            <Setter Property="Background" Value="#202532" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2D3445" />
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.25" Color="#88A8FF" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Application.Resources>
+</Application>

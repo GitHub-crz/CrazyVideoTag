@@ -1,0 +1,5 @@
+D:\AI\Claude-WorkSpace\CrazyVideoTag\publish\CrazyVideoTag-v1.0.2-win-x64\CrazyVideoTag.exe
+D:\AI\Claude-WorkSpace\CrazyVideoTag\publish\CrazyVideoTag-v1.0.2-win-x64\CrazyVideoTag.dll
+D:\AI\Claude-WorkSpace\CrazyVideoTag\publish\CrazyVideoTag-v1.0.2-win-x64\CrazyVideoTag.deps.json
+D:\AI\Claude-WorkSpace\CrazyVideoTag\publish\CrazyVideoTag-v1.0.2-win-x64\CrazyVideoTag.runtimeconfig.json
+D:\AI\Claude-WorkSpace\CrazyVideoTag\publish\CrazyVideoTag-v1.0.2-win-x64\CrazyVideoTag.pdb
