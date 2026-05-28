@@ -32,7 +32,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _thumbnailTotal;
     private int _currentDisplayVersion;
     private CancellationTokenSource? _backgroundLoadCts;
-    private CancellationTokenSource? _coverRevealCts;
     private bool _isStartPageVisible = true;
     private bool _suppressRightTagChanged;
     private List<VideoItem> _cutVideos = [];
@@ -164,6 +163,31 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public string DisplayedCountText => $"已加载 {DisplayedVideos.Count} / {_currentDisplaySource.Count} 个视频";
+
+    public IReadOnlyList<SortModeOption> SortModeOptions { get; } =
+    [
+        new(VideoSortMode.ModifiedDesc, "按修改时间（新→旧）"),
+        new(VideoSortMode.ModifiedAsc, "按修改时间（旧→新）"),
+        new(VideoSortMode.SizeDesc, "按文件大小（大→小）"),
+        new(VideoSortMode.SizeAsc, "按文件大小（小→大）"),
+    ];
+
+    public VideoSortMode SortMode
+    {
+        get => _state.SortMode;
+        set
+        {
+            if (_state.SortMode == value)
+            {
+                return;
+            }
+
+            _state.SortMode = value;
+            OnPropertyChanged();
+            _ = SaveAsync();
+            _ = RefreshDisplayedVideosAsync();
+        }
+    }
 
     public async Task InitializeAsync()
     {
@@ -778,9 +802,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private async Task RefreshDisplayedVideosAsync()
     {
         _backgroundLoadCts?.Cancel();
-        _coverRevealCts?.Cancel();
         _backgroundLoadCts = new CancellationTokenSource();
-        _coverRevealCts = new CancellationTokenSource();
         var version = Interlocked.Increment(ref _currentDisplayVersion);
         var token = _backgroundLoadCts.Token;
 
@@ -808,7 +830,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 query = query.Where(video => selectedActors.Any(id => video.ActorIds.Contains(id)));
             }
 
-            return query.OrderByDescending(video => video.ModifiedAt).ToList();
+            return ApplySort(query).ToList();
         }, token);
 
         if (_currentDisplayVersion != version)
@@ -816,17 +838,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        foreach (var video in source)
-        {
-            video.IsCoverVisible = false;
-        }
-
         _currentDisplaySource = source;
         DisplayedVideos.Clear();
         LoadMoreVideos();
         OnPropertyChanged(nameof(DisplayedCountText));
         _ = ContinueLoadingInBackgroundAsync(version, token);
-        _ = RevealCoversAsync(_coverRevealCts.Token);
     }
 
     private async Task ContinueLoadingInBackgroundAsync(int version, CancellationToken cancellationToken)
@@ -885,45 +901,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         LoadMoreVideosCommand.RaiseCanExecuteChanged();
     }
 
-    private async Task RevealCoversAsync(CancellationToken cancellationToken)
-    {
-        const int revealBatch = 10;
-        var revealed = 0;
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-
-            var done = false;
-            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                var count = DisplayedVideos.Count;
-                if (revealed >= count && count >= _currentDisplaySource.Count)
-                {
-                    done = true;
-                    return;
-                }
-
-                var end = Math.Min(revealed + revealBatch, count);
-                for (var i = revealed; i < end; i++)
-                {
-                    DisplayedVideos[i].IsCoverVisible = true;
-                }
-
-                revealed = end;
-            });
-
-            if (done)
-            {
-                break;
-            }
-        }
-    }
-
     private static bool IsUnderFolder(VideoItem video, string folder)
     {
         var relative = System.IO.Path.GetRelativePath(folder, video.Path);
@@ -943,6 +920,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private Task SaveAsync() => _store.SaveAsync(_state);
 
+    private IEnumerable<VideoItem> ApplySort(IEnumerable<VideoItem> query) => _state.SortMode switch
+    {
+        VideoSortMode.ModifiedAsc => query.OrderBy(video => video.ModifiedAt),
+        VideoSortMode.SizeDesc => query.OrderByDescending(video => video.Size),
+        VideoSortMode.SizeAsc => query.OrderBy(video => video.Size),
+        _ => query.OrderByDescending(video => video.ModifiedAt),
+    };
+
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
@@ -957,3 +942,5 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
+
+public sealed record SortModeOption(VideoSortMode Mode, string Label);

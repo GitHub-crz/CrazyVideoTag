@@ -2,7 +2,7 @@
 
 一款基于 WPF / .NET 8 的本地视频标签管理工具，支持给本地视频打标签、按演员/普通标签筛选、自动生成封面、剪切粘贴等功能。深色主题，适合管理大量本地视频。
 
-当前版本：**v1.1.3**
+当前版本：**v1.1.4**
 
 ## 功能特性
 
@@ -12,6 +12,7 @@
 - 自动跳过 `$Recycle.Bin`、`Recycle.Bin` 及系统/隐藏目录
 - 文件夹树形展示，根目录可选中
 - 视频卡片显示封面、文件名、修改时间、文件大小、视频时长
+- 支持按修改时间或文件大小排序（顶部下拉框切换，自动持久化）
 - 双击视频用系统默认播放器打开
 - 按 `Delete` 键删除选中视频
 - 右键视频可设置自定义封面图片，自定义封面优先于自动生成的封面
@@ -62,7 +63,7 @@
 
 ### 直接运行
 
-1. 从 `publish/` 目录下载对应版本（如 `CrazyVideoTag-v1.1.3-win-x64`）
+1. 从 `publish/` 目录下载对应版本（如 `CrazyVideoTag-v1.1.4-win-x64`）
 2. 双击 `CrazyVideoTag.exe` 启动
 3. 首次启动点击「配置 FFmpeg」指定 `ffmpeg.exe` 与 `ffprobe.exe` 路径
 4. 点击「配置存储目录」指定标签数据与封面缓存的保存位置
@@ -77,7 +78,7 @@ dotnet build CrazyVideoTag.slnx
 # 发布
 dotnet publish CrazyVideoTag/CrazyVideoTag.csproj -c Release -r win-x64 \
   --self-contained false -p:PublishSingleFile=false \
-  -o publish/CrazyVideoTag-v1.1.3-win-x64
+  -o publish/CrazyVideoTag-v1.1.4-win-x64
 ```
 
 ## 项目结构
@@ -128,4 +129,4 @@ CrazyVideoTag/
 
 ## 版本历史
 
-发布包位于 `publish/` 目录，每个版本都打包成独立的 win-x64 文件夹。最新版本为 v1.1.3。
+发布包位于 `publish/` 目录，每个版本都打包成独立的 win-x64 文件夹。最新版本为 v1.1.4。

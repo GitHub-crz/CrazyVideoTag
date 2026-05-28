@@ -8,4 +8,5 @@ public sealed class AppState
     public List<TagDefinition> Tags { get; set; } = [];
     public Dictionary<string, VideoMetadata> Videos { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, ThumbnailCacheEntry> ThumbnailCache { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public VideoSortMode SortMode { get; set; } = VideoSortMode.ModifiedDesc;
 }
