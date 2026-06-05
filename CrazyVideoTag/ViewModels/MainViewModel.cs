@@ -17,7 +17,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly FileOpenService _fileOpenService = new();
     private readonly FileDeleteService _fileDeleteService = new();
     private readonly CancellationTokenSource _shutdown = new();
-    private const int DisplayPageSize = 80;
+    private const int DisplayPageSize = 40;
     private AppSettings _settings = new();
     private AppState _state = new();
     private List<VideoItem> _allVideos = [];
@@ -34,6 +34,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private CancellationTokenSource? _backgroundLoadCts;
     private bool _isStartPageVisible = true;
     private bool _suppressRightTagChanged;
+    private bool _suppressFilterChanged;
     private List<VideoItem> _cutVideos = [];
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
@@ -250,7 +251,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         SelectedFolder = FolderRoot;
-        _ = RefreshDisplayedVideosAsync();
         StatusText = $"扫描完成，共 {ScanCount} 个视频";
         _ = GenerateThumbnailsAsync();
     }
@@ -513,8 +513,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         ReplaceRows(TagRows, _state.Tags.Where(tag => tag.Kind == TagKind.Normal).OrderBy(tag => tag.Name), OnRightTagChanged);
         ReplaceRows(ActorRows, _state.Tags.Where(tag => tag.Kind == TagKind.Actor).OrderBy(tag => tag.SortOrder).ThenBy(tag => tag.Name), OnRightTagChanged);
-        ReplaceRows(FilterTagRows, _state.Tags.Where(tag => tag.Kind == TagKind.Normal).OrderBy(tag => tag.Name), (_, _) => _ = RefreshDisplayedVideosAsync());
-        ReplaceRows(FilterActorRows, _state.Tags.Where(tag => tag.Kind == TagKind.Actor).OrderBy(tag => tag.SortOrder).ThenBy(tag => tag.Name), (_, _) => _ = RefreshDisplayedVideosAsync());
+        ReplaceRows(FilterTagRows, _state.Tags.Where(tag => tag.Kind == TagKind.Normal).OrderBy(tag => tag.Name), OnFilterTagChanged);
+        ReplaceRows(FilterActorRows, _state.Tags.Where(tag => tag.Kind == TagKind.Actor).OrderBy(tag => tag.SortOrder).ThenBy(tag => tag.Name), OnFilterTagChanged);
         SyncRightChecks();
     }
 
@@ -714,10 +714,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void ClearFilterChecks()
     {
-        foreach (var row in FilterTagRows.Concat(FilterActorRows))
+        _suppressFilterChanged = true;
+        try
         {
-            row.IsChecked = false;
+            foreach (var row in FilterTagRows.Concat(FilterActorRows))
+            {
+                row.IsChecked = false;
+            }
         }
+        finally
+        {
+            _suppressFilterChanged = false;
+        }
+    }
+
+    private void OnFilterTagChanged(object? sender, EventArgs e)
+    {
+        if (_suppressFilterChanged)
+        {
+            return;
+        }
+
+        _ = RefreshDisplayedVideosAsync();
     }
 
     private void OnRightTagChanged(object? sender, EventArgs e)
@@ -802,91 +820,68 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private async Task RefreshDisplayedVideosAsync()
     {
         _backgroundLoadCts?.Cancel();
-        _backgroundLoadCts = new CancellationTokenSource();
+        _backgroundLoadCts?.Dispose();
+        _backgroundLoadCts = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
         var version = Interlocked.Increment(ref _currentDisplayVersion);
         var token = _backgroundLoadCts.Token;
 
-        var selectedNormal = FilterTagRows.Where(row => row.IsChecked).Select(row => row.Id).ToList();
-        var selectedActors = FilterActorRows.Where(row => row.IsChecked).Select(row => row.Id).ToList();
-        var folder = SelectedFolder;
+        var selectedNormal = FilterTagRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var selectedActors = FilterActorRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var folderPath = SelectedFolder?.Path;
         var allVideos = _allVideos;
 
-        var source = await Task.Run(() =>
+        _currentDisplaySource = [];
+        DisplayedVideos.Clear();
+        OnPropertyChanged(nameof(DisplayedCountText));
+        LoadMoreVideosCommand.RaiseCanExecuteChanged();
+        StatusText = "正在加载视频...";
+
+        List<VideoItem> source;
+        try
         {
-            IEnumerable<VideoItem> query = allVideos;
-
-            if (folder is not null && selectedNormal.Count == 0 && selectedActors.Count == 0)
+            source = await Task.Run(() =>
             {
-                query = query.Where(video => IsUnderFolder(video, folder.Path));
-            }
+                var result = new List<VideoItem>();
+                var restrictToFolder = !string.IsNullOrWhiteSpace(folderPath) && selectedNormal.Count == 0 && selectedActors.Count == 0;
+                foreach (var video in allVideos)
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (restrictToFolder && !IsUnderFolderFast(video, folderPath!))
+                    {
+                        continue;
+                    }
 
-            if (selectedNormal.Count > 0)
-            {
-                query = query.Where(video => selectedNormal.All(id => video.TagIds.Contains(id)));
-            }
+                    if (selectedNormal.Count > 0 && !selectedNormal.All(id => video.TagIds.Contains(id, StringComparer.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
 
-            if (selectedActors.Count > 0)
-            {
-                query = query.Where(video => selectedActors.Any(id => video.ActorIds.Contains(id)));
-            }
+                    if (selectedActors.Count > 0 && !selectedActors.Any(id => video.ActorIds.Contains(id, StringComparer.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
 
-            return ApplySort(query).ToList();
-        }, token);
+                    result.Add(video);
+                }
 
-        if (_currentDisplayVersion != version)
+                token.ThrowIfCancellationRequested();
+                return ApplySort(result).ToList();
+            }, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (_currentDisplayVersion != version || token.IsCancellationRequested)
         {
             return;
         }
 
         _currentDisplaySource = source;
-        DisplayedVideos.Clear();
         LoadMoreVideos();
         OnPropertyChanged(nameof(DisplayedCountText));
-        _ = ContinueLoadingInBackgroundAsync(version, token);
-    }
-
-    private async Task ContinueLoadingInBackgroundAsync(int version, CancellationToken cancellationToken)
-    {
-        const int batchSize = 20;
-        while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == version)
-        {
-            await Task.Delay(300, cancellationToken).ConfigureAwait(false);
-            if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version)
-            {
-                break;
-            }
-
-            var done = false;
-            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                if (_currentDisplayVersion != version)
-                {
-                    done = true;
-                    return;
-                }
-
-                var start = DisplayedVideos.Count;
-                if (start >= _currentDisplaySource.Count)
-                {
-                    done = true;
-                    return;
-                }
-
-                var end = Math.Min(start + batchSize, _currentDisplaySource.Count);
-                for (var index = start; index < end; index++)
-                {
-                    DisplayedVideos.Add(_currentDisplaySource[index]);
-                }
-
-                LoadMoreVideosCommand.RaiseCanExecuteChanged();
-                OnPropertyChanged(nameof(DisplayedCountText));
-            });
-
-            if (done)
-            {
-                break;
-            }
-        }
+        StatusText = $"已匹配 {source.Count} 个视频";
     }
 
     private void LoadMoreVideos()
@@ -899,13 +894,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         LoadMoreVideosCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(DisplayedCountText));
     }
 
-    private static bool IsUnderFolder(VideoItem video, string folder)
+    private static bool IsUnderFolderFast(VideoItem video, string folder)
     {
-        var relative = System.IO.Path.GetRelativePath(folder, video.Path);
-        return !relative.StartsWith("..") && !System.IO.Path.IsPathRooted(relative);
+        var normalizedFolder = folder.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        return string.Equals(video.Folder, normalizedFolder, StringComparison.OrdinalIgnoreCase)
+            || video.Folder.StartsWith(normalizedFolder + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || video.Folder.StartsWith(normalizedFolder + System.IO.Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool IsUnderFolder(VideoItem video, string folder) => IsUnderFolderFast(video, folder);
 
     private void SaveVideoMetadata(VideoItem video)
     {

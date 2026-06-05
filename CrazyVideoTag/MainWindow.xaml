@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        Title="CrazyVideoTag v1.1.6" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        Title="CrazyVideoTag v1.1.7" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
