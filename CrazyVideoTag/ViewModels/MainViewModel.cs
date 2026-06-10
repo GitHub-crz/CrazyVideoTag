@@ -18,6 +18,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly FileDeleteService _fileDeleteService = new();
     private readonly CancellationTokenSource _shutdown = new();
     private const int DisplayPageSize = 40;
+    private const int BackgroundLoadBatchSize = 5;
+    private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromSeconds(2);
     private AppSettings _settings = new();
     private AppState _state = new();
     private List<VideoItem> _allVideos = [];
@@ -27,6 +29,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private FolderNode? _selectedFolder;
     private VideoItem? _selectedVideo;
     private string _statusText = "请选择一个视频文件夹";
+    private string _searchText = string.Empty;
     private int _scanCount;
     private int _thumbnailCompleted;
     private int _thumbnailTotal;
@@ -137,6 +140,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _statusText;
         private set => SetField(ref _statusText, value);
+    }
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetField(ref _searchText, value))
+            {
+                _ = RefreshDisplayedVideosAsync();
+            }
+        }
     }
 
     public int ScanCount
@@ -827,6 +842,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         var selectedNormal = FilterTagRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var selectedActors = FilterActorRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var searchText = SearchText.Trim();
         var folderPath = SelectedFolder?.Path;
         var allVideos = _allVideos;
 
@@ -861,6 +877,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
                         continue;
                     }
 
+                    if (!string.IsNullOrWhiteSpace(searchText) && !video.Title.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     result.Add(video);
                 }
 
@@ -880,14 +901,52 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         _currentDisplaySource = source;
         LoadMoreVideos();
+        _ = ContinueLoadingInBackgroundAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
         StatusText = $"已匹配 {source.Count} 个视频";
     }
 
-    private void LoadMoreVideos()
+    private async Task ContinueLoadingInBackgroundAsync(int version, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == version)
+        {
+            if (DisplayedVideos.Count >= _currentDisplaySource.Count)
+            {
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(BackgroundLoadInterval, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version)
+            {
+                return;
+            }
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count)
+                {
+                    return;
+                }
+
+                LoadMoreVideos(BackgroundLoadBatchSize);
+            });
+        }
+    }
+
+    private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);
+
+    private void LoadMoreVideos(int count)
     {
         var start = DisplayedVideos.Count;
-        var end = Math.Min(start + DisplayPageSize, _currentDisplaySource.Count);
+        var end = Math.Min(start + count, _currentDisplaySource.Count);
         for (var index = start; index < end; index++)
         {
             DisplayedVideos.Add(_currentDisplaySource[index]);
