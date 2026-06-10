@@ -66,6 +66,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not FrameworkElement element)
+        {
+            return;
+        }
+
+        element.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+        e.Handled = true;
+    }
+
     private void VideoScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (sender is not ScrollViewer scrollViewer || e.VerticalChange <= 0)

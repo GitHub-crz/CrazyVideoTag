@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        Title="CrazyVideoTag v1.1.9" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        Title="CrazyVideoTag v1.1.10" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -114,7 +114,7 @@
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="搜索标题：" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="12,0,4,0" />
-                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" MinWidth="180" VerticalAlignment="Center" ToolTip="输入标题关键字搜索视频" />
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=Explicit}" MinWidth="180" VerticalAlignment="Center" ToolTip="输入标题关键字后按回车搜索" KeyDown="SearchBox_KeyDown" />
                     <TextBlock Text="排序：" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="12,0,4,0" />
                     <ComboBox ItemsSource="{Binding SortModeOptions}" DisplayMemberPath="Label" SelectedValuePath="Mode" SelectedValue="{Binding SortMode, Mode=TwoWay}" MinWidth="160" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding DisplayedCountText}" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="12,0" />
