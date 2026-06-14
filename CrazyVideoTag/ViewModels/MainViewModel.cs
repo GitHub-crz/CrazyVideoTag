@@ -18,8 +18,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly FileDeleteService _fileDeleteService = new();
     private readonly CancellationTokenSource _shutdown = new();
     private const int DisplayPageSize = 40;
-    private const int BackgroundLoadBatchSize = 5;
-    private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromSeconds(2);
     private AppSettings _settings = new();
     private AppState _state = new();
     private List<VideoItem> _allVideos = [];
@@ -901,44 +899,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         _currentDisplaySource = source;
         LoadMoreVideos();
-        _ = ContinueLoadingInBackgroundAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
         StatusText = $"已匹配 {source.Count} 个视频";
-    }
-
-    private async Task ContinueLoadingInBackgroundAsync(int version, CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == version)
-        {
-            if (DisplayedVideos.Count >= _currentDisplaySource.Count)
-            {
-                return;
-            }
-
-            try
-            {
-                await Task.Delay(BackgroundLoadInterval, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-
-            if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version)
-            {
-                return;
-            }
-
-            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count)
-                {
-                    return;
-                }
-
-                LoadMoreVideos(BackgroundLoadBatchSize);
-            });
-        }
     }
 
     private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);
