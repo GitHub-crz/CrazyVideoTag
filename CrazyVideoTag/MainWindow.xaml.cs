@@ -17,7 +17,17 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _viewModel.DisplayRefreshed += ScrollVideosToTop;
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
+    }
+
+    private void ScrollVideosToTop()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            FolderVideoScroller.ScrollToTop();
+            FilterVideoScroller.ScrollToTop();
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void FolderTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)

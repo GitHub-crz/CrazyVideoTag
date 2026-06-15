@@ -219,6 +219,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action? DisplayRefreshed;
 
     private void ChooseFolder()
     {
@@ -931,6 +932,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         LoadMoreVideos();
         OnPropertyChanged(nameof(DisplayedCountText));
         StatusText = $"已匹配 {source.Count} 个视频";
+        DisplayRefreshed?.Invoke();
     }
 
     private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);

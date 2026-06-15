@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        Title="CrazyVideoTag v1.1.13" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        Title="CrazyVideoTag v1.1.14" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -158,7 +158,7 @@
                                     </TreeView.Resources>
                                 </TreeView>
                             </Border>
-                            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                            <ScrollViewer x:Name="FolderVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
                                 <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -184,7 +184,7 @@
                                     <ItemsControl ItemsSource="{Binding FilterActorRows}" ItemTemplate="{StaticResource FilterTagRowTemplate}" />
                                 </StackPanel>
                             </ScrollViewer>
-                            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                            <ScrollViewer x:Name="FilterVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
                                 <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
