@@ -2,7 +2,7 @@
 
 一款基于 WPF / .NET 8 的本地视频标签管理工具，支持给本地视频打标签、按演员/普通标签筛选、自动生成封面、剪切粘贴等功能。深色主题，适合管理大量本地视频。
 
-当前版本：**v1.1.14**
+当前版本：**v1.1.15**
 
 ## 功能特性
 
@@ -44,7 +44,7 @@
 - 选中视频后可手动重新生成封面，失败时显示原因
 
 ### 性能优化
-- 分页加载（首屏 40 个 / 页），滚动接近底部时按需加载更多，避免大量视频卡片一次性占满界面
+- 分页加载（首屏 40 个），每 5 秒后台自动补充 40 个，滚动接近底部时也可触发加载
 - 筛选 / 排序在后台线程计算，切换标签页不阻塞 UI
 - 标签变更只更新数据，不重建列表，避免视频跳动
 - 滚动接近底部时自动加载更多
@@ -79,7 +79,7 @@ dotnet build CrazyVideoTag.slnx
 # 发布
 dotnet publish CrazyVideoTag/CrazyVideoTag.csproj -c Release -r win-x64 \
   --self-contained false -p:PublishSingleFile=false \
-  -o publish/CrazyVideoTag-v1.1.14-win-x64
+  -o publish/CrazyVideoTag-v1.1.15-win-x64
 ```
 
 ## 项目结构
@@ -130,4 +130,4 @@ CrazyVideoTag/
 
 ## 版本历史
 
-发布包位于 `publish/` 目录，每个版本都打包成独立的 win-x64 文件夹。最新版本为 v1.1.14。
+发布包位于 `publish/` 目录，每个版本都打包成独立的 win-x64 文件夹。最新版本为 v1.1.15。
