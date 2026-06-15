@@ -28,6 +28,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _viewModel.TrimDisplayedVideos();
+    }
+
     private void VideoCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not VideoItem video)

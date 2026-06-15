@@ -948,6 +948,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(DisplayedCountText));
     }
 
+    public void TrimDisplayedVideos()
+    {
+        if (DisplayedVideos.Count <= DisplayPageSize)
+        {
+            return;
+        }
+
+        var kept = DisplayedVideos.Take(DisplayPageSize).ToList();
+        DisplayedVideos.Clear();
+        foreach (var item in kept)
+        {
+            DisplayedVideos.Add(item);
+        }
+
+        LoadMoreVideosCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(DisplayedCountText));
+    }
+
     private static bool IsUnderFolderFast(VideoItem video, string folder)
     {
         var normalizedFolder = folder.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
