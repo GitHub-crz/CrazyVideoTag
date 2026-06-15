@@ -36,6 +36,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isStartPageVisible = true;
     private bool _suppressRightTagChanged;
     private bool _suppressFilterChanged;
+    private readonly HashSet<VideoItem> _selectedVideos = [];
     private List<VideoItem> _cutVideos = [];
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
@@ -77,7 +78,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         DeleteSelectedVideoCommand = new AsyncRelayCommand(_ => DeleteSelectedVideoAsync(), _ => SelectedVideo is not null);
         SetCustomCoverCommand = new RelayCommand(_ => SetCustomCover(), _ => SelectedVideo is not null);
         LoadMoreVideosCommand = new RelayCommand(_ => LoadMoreVideos(), _ => DisplayedVideos.Count < _currentDisplaySource.Count);
-        CutCommand = new RelayCommand(_ => CutSelectedVideos(), _ => _allVideos.Any(v => v.IsSelected));
+        CutCommand = new RelayCommand(_ => CutSelectedVideos(), _ => _selectedVideos.Count > 0);
         PasteCommand = new AsyncRelayCommand(_ => PasteVideosAsync(), _ => _cutVideos.Count > 0 && SelectedFolder is not null);
     }
 
@@ -605,11 +606,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public void SelectSingleVideo(VideoItem video)
     {
-        foreach (var v in _allVideos.Where(v => v.IsSelected && v != video))
+        foreach (var v in _selectedVideos.Where(v => v != video).ToList())
         {
             v.IsSelected = false;
         }
 
+        _selectedVideos.Clear();
+        _selectedVideos.Add(video);
         video.IsSelected = true;
         SelectedVideo = video;
         CutCommand.RaiseCanExecuteChanged();
@@ -618,23 +621,33 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void ToggleVideoSelection(VideoItem video)
     {
         video.IsSelected = !video.IsSelected;
-        SelectedVideo = video.IsSelected ? video : _allVideos.FirstOrDefault(v => v.IsSelected);
+        if (video.IsSelected)
+        {
+            _selectedVideos.Add(video);
+        }
+        else
+        {
+            _selectedVideos.Remove(video);
+        }
+
+        SelectedVideo = video.IsSelected ? video : _selectedVideos.FirstOrDefault();
         CutCommand.RaiseCanExecuteChanged();
     }
 
     private void ClearSelection()
     {
-        foreach (var v in _allVideos.Where(v => v.IsSelected))
+        foreach (var v in _selectedVideos.ToList())
         {
             v.IsSelected = false;
         }
 
+        _selectedVideos.Clear();
         CutCommand.RaiseCanExecuteChanged();
     }
 
     private void CutSelectedVideos()
     {
-        _cutVideos = _allVideos.Where(v => v.IsSelected).ToList();
+        _cutVideos = _selectedVideos.ToList();
         PasteCommand.RaiseCanExecuteChanged();
         StatusText = $"已剪切 {_cutVideos.Count} 个视频";
     }
@@ -647,35 +660,46 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         var targetFolder = SelectedFolder.Path;
+        var videos = _cutVideos.ToList();
         var moved = 0;
         var skipped = new List<string>();
+        var succeeded = new List<(VideoItem Video, string Destination)>();
 
-        foreach (var video in _cutVideos)
+        await Task.Run(() =>
         {
-            var fileName = System.IO.Path.GetFileName(video.Path);
-            var destination = System.IO.Path.Combine(targetFolder, fileName);
-
-            if (string.Equals(video.Path, destination, StringComparison.OrdinalIgnoreCase))
+            foreach (var video in videos)
             {
-                continue;
-            }
+                var fileName = System.IO.Path.GetFileName(video.Path);
+                var destination = System.IO.Path.Combine(targetFolder, fileName);
 
-            if (File.Exists(destination))
-            {
-                skipped.Add(fileName);
-                continue;
-            }
+                if (string.Equals(video.Path, destination, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
 
-            try
-            {
-                File.Move(video.Path, destination);
-            }
-            catch (Exception ex)
-            {
-                skipped.Add($"{fileName} ({ex.Message})");
-                continue;
-            }
+                if (File.Exists(destination))
+                {
+                    skipped.Add(fileName);
+                    continue;
+                }
 
+                try
+                {
+                    File.Move(video.Path, destination);
+                }
+                catch (Exception ex)
+                {
+                    skipped.Add($"{fileName} ({ex.Message})");
+                    continue;
+                }
+
+                succeeded.Add((video, destination));
+                moved++;
+            }
+        });
+
+        foreach (var (video, destination) in succeeded)
+        {
             var oldPath = video.Path;
             if (_state.Videos.TryGetValue(oldPath, out var metadata))
             {
@@ -704,10 +728,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
             newVideo.CustomCoverPath = video.CustomCoverPath;
             newVideo.Duration = video.Duration;
             _allVideos.Add(newVideo);
-            moved++;
         }
 
         _cutVideos.Clear();
+        _selectedVideos.Clear();
         ClearSelection();
         SelectedVideo = null;
         PasteCommand.RaiseCanExecuteChanged();
@@ -822,11 +846,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void SyncRightChecks()
     {
         var target = SelectedVideo;
-        foreach (var row in TagRows.Concat(ActorRows))
+        _suppressRightTagChanged = true;
+        try
         {
-            row.CheckedChanged -= OnRightTagChanged;
-            row.IsChecked = target is not null && (row.Kind == TagKind.Actor ? target.ActorIds : target.TagIds).Contains(row.Id);
-            row.CheckedChanged += OnRightTagChanged;
+            foreach (var row in TagRows.Concat(ActorRows))
+            {
+                row.IsChecked = target is not null && (row.Kind == TagKind.Actor ? target.ActorIds : target.TagIds).Contains(row.Id);
+            }
+        }
+        finally
+        {
+            _suppressRightTagChanged = false;
         }
     }
 

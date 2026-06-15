@@ -27,24 +27,19 @@ public sealed class ThumbnailService
         Directory.CreateDirectory(ThumbnailDirectory);
         var targets = videos.Where(video => string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath)).ToList();
         var completed = 0;
-        using var semaphore = new SemaphoreSlim(2);
 
-        var tasks = targets.Select(async video =>
+        var parallelOptions = new ParallelOptions
         {
-            await semaphore.WaitAsync(cancellationToken);
-            try
-            {
-                await GenerateForVideoAsync(video, state, cancellationToken);
-            }
-            finally
-            {
-                semaphore.Release();
-                var done = Interlocked.Increment(ref completed);
-                progress?.Report(new ThumbnailProgress(done, targets.Count, video.Path));
-            }
-        });
+            MaxDegreeOfParallelism = 2,
+            CancellationToken = cancellationToken
+        };
 
-        await Task.WhenAll(tasks);
+        await Parallel.ForEachAsync(targets, parallelOptions, async (video, ct) =>
+        {
+            await GenerateForVideoAsync(video, state, ct);
+            var done = Interlocked.Increment(ref completed);
+            progress?.Report(new ThumbnailProgress(done, targets.Count, video.Path));
+        });
     }
 
     public async Task<ThumbnailResult> GenerateForVideoAsync(VideoItem video, AppState state, CancellationToken cancellationToken)
