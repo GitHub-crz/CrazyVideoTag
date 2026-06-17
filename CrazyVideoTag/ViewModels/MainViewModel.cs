@@ -211,6 +211,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _settings = await _settingsStore.LoadAsync();
         ApplyStorageFolder(GetStorageFolder());
         _state = await _store.LoadAsync();
+        if (_state.SortMode != VideoSortMode.ModifiedDesc)
+        {
+            _state.SortMode = VideoSortMode.ModifiedDesc;
+            await SaveAsync();
+        }
+
         RefreshTagRows();
         if (Directory.Exists(_state.LastFolder))
         {
@@ -477,6 +483,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _fileDeleteService.Delete(video.Path);
             _allVideos.Remove(video);
+            _currentDisplaySource.Remove(video);
+            DisplayedVideos.Remove(video);
+            _selectedVideos.Remove(video);
             _state.Videos.Remove(video.Path);
             _state.ThumbnailCache.Remove(video.Path);
             SelectedVideo = null;
@@ -487,7 +496,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 FolderTreeRoots.Add(FolderRoot);
             }
 
-            _ = RefreshDisplayedVideosAsync();
+            LoadMoreVideos(1);
+            OnPropertyChanged(nameof(DisplayedCountText));
             await SaveAsync();
         }
         catch (Exception ex)
