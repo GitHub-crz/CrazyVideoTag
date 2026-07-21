@@ -6,7 +6,6 @@ namespace CrazyVideoTag.Models;
 public sealed class VideoItem : INotifyPropertyChanged
 {
     private bool _isSelected;
-    private bool _isCoverVisible;
     private string? _thumbnailPath;
     private string? _customCoverPath;
     private string? _thumbnailError;
@@ -26,12 +25,6 @@ public sealed class VideoItem : INotifyPropertyChanged
     {
         get => _isSelected;
         set => SetField(ref _isSelected, value);
-    }
-
-    public bool IsCoverVisible
-    {
-        get => _isCoverVisible;
-        set => SetField(ref _isCoverVisible, value);
     }
 
     public string? ThumbnailPath
