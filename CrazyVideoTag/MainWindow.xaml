@@ -35,42 +35,24 @@
         </DataTemplate>
 
         <DataTemplate x:Key="VideoCardTemplate" DataType="{x:Type models:VideoItem}">
-            <Border Width="250" Margin="8" Padding="5" CornerRadius="12" MouseLeftButtonDown="VideoCard_MouseLeftButtonDown" MouseRightButtonDown="VideoCard_MouseRightButtonDown">
+            <Border Width="250" Margin="9" Style="{StaticResource VideoCardStyle}" MouseLeftButtonDown="VideoCard_MouseLeftButtonDown" MouseRightButtonDown="VideoCard_MouseRightButtonDown">
+                <Border.RenderTransform>
+                    <TranslateTransform Y="0" />
+                </Border.RenderTransform>
                 <Border.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="设置封面图片..." Command="{Binding PlacementTarget.DataContext.SetCustomCoverCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                     </ContextMenu>
                 </Border.ContextMenu>
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Background" Value="{StaticResource CardBg}" />
-                        <Setter Property="BorderBrush" Value="Transparent" />
-                        <Setter Property="BorderThickness" Value="2" />
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource CardHover}" />
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35" Color="#000000" />
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.45" Color="#5B9DFF" />
-                                    </Setter.Value>
-                                </Setter>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <Grid Width="240" Height="150" ClipToBounds="True">
-                        <Border Background="#0C0E12" CornerRadius="8" />
-                        <Image Source="{Binding EffectiveThumbnailPath}" Stretch="UniformToFill" Width="240" Height="150" />
-                        <TextBlock Text="封面未生成" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}" />
+                <StackPanel Margin="9,9,9,12">
+                    <Grid Width="229" Height="140">
+                        <Border Background="#0C0E12" CornerRadius="10" />
+                        <Image Source="{Binding EffectiveThumbnailPath}" Stretch="UniformToFill" Width="229" Height="140">
+                            <Image.Clip>
+                                <RectangleGeometry RadiusX="10" RadiusY="10" Rect="0,0,229,140" />
+                            </Image.Clip>
+                        </Image>
+                        <TextBlock Text="封面未生成" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}" />
                         <ItemsControl ItemTemplate="{StaticResource TagChipTemplate}">
                             <ItemsControl.ItemsSource>
                                 <MultiBinding Converter="{StaticResource TagIdsToDefinitions}">
@@ -100,10 +82,8 @@
                             <ItemsControl.Margin>8</ItemsControl.Margin>
                         </ItemsControl>
                     </Grid>
-                    <DockPanel Height="74" Margin="4,9,4,0">
-                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding InfoText}" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,5,0,0" />
-                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Foreground="{StaticResource TextMain}" FontSize="13" LineHeight="18" MaxHeight="56" VerticalAlignment="Top" />
-                    </DockPanel>
+                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMain}" FontSize="14" FontWeight="SemiBold" LineHeight="19" MaxHeight="42" Margin="2,10,2,0" />
+                    <TextBlock Text="{Binding InfoText}" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="2,5,2,0" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -115,10 +95,10 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,0,0,1" Padding="14,10">
+        <Border Grid.Row="0" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,0,0,1" Padding="16,11">
             <DockPanel>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                    <Button Content="选择/替换文件夹" Command="{Binding ChooseFolderCommand}" Style="{StaticResource PrimaryButtonStyle}" />
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <Button Content="选择 / 替换文件夹" Command="{Binding ChooseFolderCommand}" Style="{StaticResource PrimaryButtonStyle}" />
                     <Button Content="重新扫描" Command="{Binding RescanCommand}" />
                     <Button Content="配置 FFmpeg" Command="{Binding ConfigureToolsCommand}" />
                     <Button Content="配置存储目录" Command="{Binding ConfigureStorageCommand}" />
@@ -149,11 +129,14 @@
 
             <Grid Grid.Column="0">
                 <Grid Visibility="{Binding IsStartPageVisible, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="460">
-                        <TextBlock Text="CrazyVideoTag" FontSize="40" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{StaticResource TextStrong}" />
-                        <TextBlock Text="本地视频标签管理工具" FontSize="15" Foreground="{StaticResource Accent}" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                        <TextBlock Text="选择一个文件夹，开始扫描和管理你的本地视频标签。" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,24,0,32" FontSize="14" />
-                        <Button Content="选择文件夹" Command="{Binding ChooseFolderCommand}" Style="{StaticResource PrimaryButtonStyle}" Height="48" FontSize="15" />
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="480">
+                        <Border HorizontalAlignment="Center" Width="76" Height="76" CornerRadius="20" Background="{StaticResource AccentSoft}" Margin="0,0,0,26">
+                            <TextBlock Text="▶" FontSize="30" Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        </Border>
+                        <TextBlock Text="CrazyVideoTag" FontSize="38" FontWeight="Bold" HorizontalAlignment="Center" Foreground="{StaticResource TextStrong}" />
+                        <TextBlock Text="本地视频标签管理工具" FontSize="15" Foreground="{StaticResource Accent}" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                        <TextBlock Text="选择一个文件夹，开始扫描和管理你的本地视频标签。" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,22,0,34" FontSize="14" />
+                        <Button Content="选择文件夹" Command="{Binding ChooseFolderCommand}" Style="{StaticResource PrimaryButtonStyle}" Height="50" FontSize="15" />
                     </StackPanel>
                 </Grid>
 
@@ -164,7 +147,7 @@
                                 <ColumnDefinition Width="260" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource PanelBg}" CornerRadius="12" Padding="10" Margin="0,0,10,0">
+                            <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="12" Margin="0,0,10,0">
                                 <TreeView x:Name="FolderTree" ItemsSource="{Binding FolderTreeRoots}" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0" SelectedItemChanged="FolderTree_SelectedItemChanged">
                                     <TreeView.Resources>
                                         <HierarchicalDataTemplate DataType="{x:Type models:FolderNode}" ItemsSource="{Binding Children}">
@@ -191,7 +174,7 @@
                                 <ColumnDefinition Width="260" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource PanelBg}" CornerRadius="12" Padding="12" Margin="0,0,10,0">
+                            <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="14" Margin="0,0,10,0">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <StackPanel>
                                         <TextBlock Text="普通标签（交集）" FontWeight="SemiBold" Foreground="{StaticResource TextStrong}" Margin="0,0,0,8" FontSize="13" />
@@ -215,7 +198,7 @@
                 </TabControl>
             </Grid>
 
-            <Border Grid.Column="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1,0,0,0" Padding="14">
+            <Border Grid.Column="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1,0,0,0" Padding="16">
                 <DockPanel LastChildFill="True">
                     <TextBlock DockPanel.Dock="Top" Text="标签功能区" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextStrong}" Margin="0,0,0,14" />
                     <TabControl>

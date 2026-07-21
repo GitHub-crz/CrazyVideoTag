@@ -8,18 +8,18 @@
         <converters:NullToVisibilityConverter x:Key="NullVisibility" />
         <converters:TagIdsToDefinitionsConverter x:Key="TagIdsToDefinitions" />
 
-        <SolidColorBrush x:Key="Bg" Color="#0E1014" />
-        <SolidColorBrush x:Key="PanelBg" Color="#151921" />
-        <SolidColorBrush x:Key="CardBg" Color="#1B2129" />
-        <SolidColorBrush x:Key="CardHover" Color="#242B36" />
-        <SolidColorBrush x:Key="TextMain" Color="#E6EAF0" />
-        <SolidColorBrush x:Key="TextMuted" Color="#8993A4" />
+        <SolidColorBrush x:Key="Bg" Color="#0D0F14" />
+        <SolidColorBrush x:Key="PanelBg" Color="#151A23" />
+        <SolidColorBrush x:Key="CardBg" Color="#1B222C" />
+        <SolidColorBrush x:Key="CardHover" Color="#252E3A" />
+        <SolidColorBrush x:Key="TextMain" Color="#E8ECF2" />
+        <SolidColorBrush x:Key="TextMuted" Color="#8B95A8" />
         <SolidColorBrush x:Key="TextStrong" Color="#FFFFFF" />
         <SolidColorBrush x:Key="Accent" Color="#5B9DFF" />
-        <SolidColorBrush x:Key="AccentHover" Color="#7AB0FF" />
-        <SolidColorBrush x:Key="AccentSoft" Color="#26547C" />
-        <SolidColorBrush x:Key="BorderSoft" Color="#262D3A" />
-        <SolidColorBrush x:Key="BorderStrong" Color="#3A4458" />
+        <SolidColorBrush x:Key="AccentHover" Color="#79AEFF" />
+        <SolidColorBrush x:Key="AccentSoft" Color="#335B9DFF" />
+        <SolidColorBrush x:Key="BorderSoft" Color="#252D3A" />
+        <SolidColorBrush x:Key="BorderStrong" Color="#3A4456" />
         <SolidColorBrush x:Key="Success" Color="#3DD68C" />
         <SolidColorBrush x:Key="Danger" Color="#FF6B6B" />
 
@@ -30,7 +30,7 @@
         </Style>
 
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#1F2530" />
+            <Setter Property="Background" Value="#1F2630" />
             <Setter Property="Foreground" Value="{StaticResource TextMain}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -46,8 +46,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#272F3D" />
+                                <Setter TargetName="Bd" Property="Background" Value="#28313F" />
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1B222C" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4" />
@@ -72,6 +75,14 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentHover}" />
+                                <Setter TargetName="Bd" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.4" Color="#5B9DFF" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4" />
@@ -95,6 +106,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#4D2730" />
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Danger}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -103,7 +115,7 @@
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#0E1014" />
+            <Setter Property="Background" Value="#0D0F14" />
             <Setter Property="Foreground" Value="{StaticResource TextMain}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -139,17 +151,17 @@
 
         <Style TargetType="TabItem">
             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="Padding" Value="20,11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
                         <Grid>
-                            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}" Margin="2,0">
+                            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}" Margin="2,0" CornerRadius="6">
                                 <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <Rectangle x:Name="Indicator" Height="3" VerticalAlignment="Bottom" Fill="{StaticResource Accent}" RadiusX="1.5" RadiusY="1.5" Margin="6,0" Opacity="0" />
+                            <Rectangle x:Name="Indicator" Height="3" VerticalAlignment="Bottom" Fill="{StaticResource Accent}" RadiusX="1.5" RadiusY="1.5" Margin="8,0" Opacity="0" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
@@ -158,6 +170,7 @@
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+                                <Setter TargetName="Bd" Property="Background" Value="#1B222C" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -186,7 +199,7 @@
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#1F2530" />
+            <Setter Property="Background" Value="#1F2630" />
             <Setter Property="Foreground" Value="{StaticResource TextMain}" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderSoft}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -229,12 +242,12 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="6" Margin="2,0">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#242B36" />
+                                <Setter TargetName="Bd" Property="Background" Value="#252E3A" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentSoft}" />
@@ -247,7 +260,7 @@
         </Style>
 
         <Style x:Key="ScrollBarThumb" TargetType="Thumb">
-            <Setter Property="Background" Value="#3A4356" />
+            <Setter Property="Background" Value="#3A4456" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -292,20 +305,69 @@
         </Style>
 
         <Style x:Key="TagRowStyle" TargetType="Border">
-            <Setter Property="Background" Value="#1B2129" />
+            <Setter Property="Background" Value="#1B222C" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="11,9" />
             <Setter Property="Margin" Value="0,4" />
             <Setter Property="Cursor" Value="Hand" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#242B36" />
+                    <Setter Property="Background" Value="#252E3A" />
                     <Setter Property="Effect">
                         <Setter.Value>
                             <DropShadowEffect BlurRadius="12" ShadowDepth="0" Opacity="0.3" Color="#5B9DFF" />
                         </Setter.Value>
                     </Setter>
                 </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="VideoCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBg}" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Border.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-5" Duration="0:0:0.18">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Border.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.3">
+                                <DoubleAnimation.EasingFunction>
+                                    <CubicEase EasingMode="EaseOut" />
+                                </DoubleAnimation.EasingFunction>
+                            </DoubleAnimation>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource CardHover}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect BlurRadius="24" ShadowDepth="8" Opacity="0.5" Color="#000000" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.5" Color="#5B9DFF" />
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </Application.Resources>
