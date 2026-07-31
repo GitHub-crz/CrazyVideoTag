@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using WpfPoint = System.Windows.Point;
 using WpfRect = System.Windows.Rect;
 using WpfSize = System.Windows.Size;
 
@@ -9,10 +10,9 @@ namespace CrazyVideoTag.Controls;
 
 /// <summary>
 /// 支持虚拟化的换行面板：只生成当前视口内的项，几千个视频卡片一次放入也能流畅滚动。
-/// 采用 pixel 滚动模式（ScrollViewer CanContentScroll=false），视口与滚动偏移从外层
-/// ScrollViewer 读取，不依赖 IScrollInfo 桥接。
+/// 需要与 ScrollViewer 配合（CanContentScroll=true，默认即为 true）。
 /// </summary>
-public sealed class VirtualizingWrapPanel : VirtualizingPanel
+public sealed class VirtualizingWrapPanel : VirtualizingPanel, IScrollInfo
 {
     private static readonly DependencyProperty ItemIndexProperty = DependencyProperty.RegisterAttached(
         "ItemIndex", typeof(int), typeof(VirtualizingWrapPanel), new PropertyMetadata(-1));
@@ -28,61 +28,118 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel
     public double ItemWidth { get => (double)GetValue(ItemWidthProperty); set => SetValue(ItemWidthProperty, value); }
     public double ItemHeight { get => (double)GetValue(ItemHeightProperty); set => SetValue(ItemHeightProperty, value); }
 
-    private ScrollViewer? _scrollViewer;
+    private WpfSize _viewportSize;
+    private WpfSize _extentSize;
+    private WpfPoint _offset;
+
+    public ScrollViewer? ScrollOwner { get; set; }
 
     private ItemsControl? ItemsOwner => ItemsControl.GetItemsOwner(this);
     private int ItemCount => ItemsOwner?.Items.Count ?? 0;
+    private int ItemsPerLine => (int)Math.Max(1, Math.Floor((_viewportSize.Width + 0.5) / ItemWidth));
+
+    public bool CanVerticallyScroll { get; set; }
+    public bool CanHorizontallyScroll { get; set; }
+
+    public double ExtentHeight => _extentSize.Height;
+    public double ExtentWidth => _extentSize.Width;
+    public double ViewportHeight => _viewportSize.Height;
+    public double ViewportWidth => _viewportSize.Width;
+    public double HorizontalOffset => _offset.X;
+    public double VerticalOffset => _offset.Y;
+
+    public void LineUp() => SetVerticalOffset(VerticalOffset - ItemHeight);
+    public void LineDown() => SetVerticalOffset(VerticalOffset + ItemHeight);
+    public void LineLeft() { }
+    public void LineRight() { }
+    public void PageUp() => SetVerticalOffset(VerticalOffset - ViewportHeight);
+    public void PageDown() => SetVerticalOffset(VerticalOffset + ViewportHeight);
+    public void PageLeft() { }
+    public void PageRight() { }
+    public void MouseWheelUp() => LineUp();
+    public void MouseWheelDown() => LineDown();
+    public void MouseWheelLeft() => SetHorizontalOffset(HorizontalOffset - ItemHeight);
+    public void MouseWheelRight() => SetHorizontalOffset(HorizontalOffset + ItemHeight);
+
+    public void SetHorizontalOffset(double offset)
+    {
+        var clamped = Math.Clamp(offset, 0, Math.Max(0, ExtentWidth - ViewportWidth));
+        if (Math.Abs(clamped - _offset.X) < 0.1)
+        {
+            return;
+        }
+
+        _offset.X = clamped;
+        ScrollOwner?.InvalidateScrollInfo();
+        InvalidateMeasure();
+    }
+
+    public void SetVerticalOffset(double offset)
+    {
+        var clamped = Math.Clamp(offset, 0, Math.Max(0, ExtentHeight - ViewportHeight));
+        if (Math.Abs(clamped - _offset.Y) < 0.1)
+        {
+            return;
+        }
+
+        _offset.Y = clamped;
+        ScrollOwner?.InvalidateScrollInfo();
+        InvalidateMeasure();
+    }
+
+    public WpfRect MakeVisible(Visual visual, WpfRect rectangle)
+    {
+        if (rectangle.IsEmpty || visual is null || visual == this || !IsAncestorOf(visual))
+        {
+            return WpfRect.Empty;
+        }
+
+        rectangle = visual.TransformToAncestor(this).TransformBounds(rectangle);
+        rectangle.Offset(_offset.X, _offset.Y);
+
+        var x = Math.Round(rectangle.Left - 0.5);
+        var y = Math.Round(rectangle.Top - 0.5);
+        SetHorizontalOffset(x);
+        SetVerticalOffset(y);
+
+        rectangle.X += _offset.X - x;
+        rectangle.Y += _offset.Y - y;
+        return rectangle;
+    }
 
     protected override WpfSize MeasureOverride(WpfSize availableSize)
     {
-        // ScrollViewer 为 pixel 滚动，availableSize.Height 通常为 Infinity；
-        // 视口大小与滚动偏移从外层 ScrollViewer 读取。
-        var scrollViewer = GetScrollViewer();
-        var viewportWidth = scrollViewer?.ViewportWidth ?? availableSize.Width;
-        var viewportHeight = scrollViewer?.ViewportHeight ?? availableSize.Height;
-        if (double.IsInfinity(viewportWidth) || viewportWidth <= 0)
+        // ScrollViewer 首次测量可能传 PositiveInfinity，此时不能返回 Infinity 的 DesiredSize。
+        if (double.IsInfinity(availableSize.Width) || double.IsInfinity(availableSize.Height))
         {
-            viewportWidth = availableSize.Width;
-        }
-
-        if (double.IsInfinity(viewportWidth) || viewportWidth <= 0)
-        {
-            viewportWidth = ItemWidth;
-        }
-
-        if (double.IsInfinity(viewportHeight) || viewportHeight < 0)
-        {
-            viewportHeight = 0;
+            RemoveAllChildren();
+            return new WpfSize(0, 0);
         }
 
         var itemCount = ItemCount;
-        if (itemCount == 0)
+        if (itemCount == 0 || availableSize.Width <= 0)
         {
             RemoveAllChildren();
-            return new WpfSize(viewportWidth, 0);
+            return new WpfSize(0, 0);
         }
 
-        var itemsPerLine = Math.Max(1, (int)(viewportWidth / ItemWidth));
+        _viewportSize = availableSize;
+        var itemsPerLine = ItemsPerLine;
         var lineCount = (int)Math.Ceiling(itemCount / (double)itemsPerLine);
-        var extentHeight = lineCount * ItemHeight;
-        var offsetY = scrollViewer?.VerticalOffset ?? 0;
+        _extentSize = new WpfSize(availableSize.Width, lineCount * ItemHeight);
 
-        var firstVisibleIndex = Math.Max(0, (int)(offsetY / ItemHeight) * itemsPerLine);
+        var firstVisibleIndex = Math.Max(0, (int)(_offset.Y / ItemHeight) * itemsPerLine);
         var lastVisibleIndex = Math.Min(
             itemCount - 1,
-            (int)Math.Ceiling((offsetY + viewportHeight) / ItemHeight) * itemsPerLine + itemsPerLine - 1);
+            (int)Math.Ceiling((_offset.Y + availableSize.Height) / ItemHeight) * itemsPerLine + itemsPerLine - 1);
 
         RealizeRange(firstVisibleIndex, lastVisibleIndex);
-
-        // 返回完整内容高度，ScrollViewer 据此计算滚动范围。
-        return new WpfSize(viewportWidth, extentHeight);
+        return availableSize;
     }
 
     protected override WpfSize ArrangeOverride(WpfSize finalSize)
     {
-        var scrollViewer = GetScrollViewer();
-        var offsetY = scrollViewer?.VerticalOffset ?? 0;
-        var itemsPerLine = Math.Max(1, (int)(finalSize.Width / ItemWidth));
+        var itemsPerLine = ItemsPerLine;
         for (var i = 0; i < Children.Count; i++)
         {
             var child = Children[i];
@@ -94,55 +151,15 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel
 
             var row = index / itemsPerLine;
             var column = index % itemsPerLine;
-            child.Arrange(new WpfRect(column * ItemWidth, row * ItemHeight - offsetY, ItemWidth, ItemHeight));
+            child.Arrange(new WpfRect(column * ItemWidth, row * ItemHeight - _offset.Y, ItemWidth, ItemHeight));
         }
 
         return finalSize;
     }
 
-    private ScrollViewer? GetScrollViewer()
-    {
-        if (_scrollViewer is not null && _scrollViewer.IsVisible)
-        {
-            return _scrollViewer;
-        }
-
-        _scrollViewer = FindScrollViewer(this);
-        if (_scrollViewer is not null)
-        {
-            _scrollViewer.ScrollChanged -= OnScrollChanged;
-            _scrollViewer.ScrollChanged += OnScrollChanged;
-        }
-
-        return _scrollViewer;
-    }
-
-    private static ScrollViewer? FindScrollViewer(DependencyObject current)
-    {
-        var parent = VisualTreeHelper.GetParent(current);
-        while (parent is not null)
-        {
-            if (parent is ScrollViewer viewer)
-            {
-                return viewer;
-            }
-
-            parent = VisualTreeHelper.GetParent(parent);
-        }
-
-        return null;
-    }
-
-    private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
-    {
-        if (e.VerticalChange != 0)
-        {
-            InvalidateMeasure();
-        }
-    }
-
     private void RealizeRange(int firstVisibleIndex, int lastVisibleIndex)
     {
+        RemoveAllChildren();
         var generator = ItemContainerGenerator;
 
         var startPosition = generator.GeneratorPositionFromIndex(firstVisibleIndex);
@@ -157,23 +174,9 @@ public sealed class VirtualizingWrapPanel : VirtualizingPanel
                 }
 
                 child.SetValue(ItemIndexProperty, i);
-                if (!Children.Contains(child))
-                {
-                    AddInternalChild(child);
-                }
-
+                AddInternalChild(child);
                 generator.PrepareItemContainer(child);
                 child.Measure(new WpfSize(ItemWidth, ItemHeight));
-            }
-        }
-
-        // 移除已不在可见范围内的容器（保留 generator 的 realized 状态）。
-        for (var i = Children.Count - 1; i >= 0; i--)
-        {
-            var index = (int)Children[i].GetValue(ItemIndexProperty);
-            if (index < firstVisibleIndex || index > lastVisibleIndex)
-            {
-                RemoveInternalChildRange(i, 1);
             }
         }
     }
