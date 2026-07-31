@@ -4,7 +4,7 @@
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
         xmlns:controls="clr-namespace:CrazyVideoTag.Controls"
-        Title="CrazyVideoTag v1.1.22" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        Title="CrazyVideoTag v1.1.23" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -162,7 +162,7 @@
                                     </TreeView.Resources>
                                 </TreeView>
                             </Border>
-                            <ScrollViewer x:Name="FolderVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer x:Name="FolderVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
                                 <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
@@ -190,7 +190,7 @@
                                     </StackPanel>
                                 </ScrollViewer>
                             </Border>
-                            <ScrollViewer x:Name="FilterVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer x:Name="FilterVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
                                 <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
