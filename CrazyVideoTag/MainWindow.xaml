@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        Title="CrazyVideoTag v1.1.20" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        Title="CrazyVideoTag v1.1.21" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -52,7 +52,12 @@
                                 <RectangleGeometry RadiusX="10" RadiusY="10" Rect="0,0,229,140" />
                             </Image.Clip>
                         </Image>
-                        <TextBlock Text="封面未生成" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}" />
+                        <Border Background="#161B24" CornerRadius="10" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="▶" FontSize="26" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
+                                <TextBlock Text="封面未生成" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
                         <ItemsControl ItemTemplate="{StaticResource TagChipTemplate}">
                             <ItemsControl.ItemsSource>
                                 <MultiBinding Converter="{StaticResource TagIdsToDefinitions}">
