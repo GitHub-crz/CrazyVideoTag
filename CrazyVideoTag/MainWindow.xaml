@@ -3,8 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        xmlns:controls="clr-namespace:CrazyVideoTag.Controls"
-        Title="CrazyVideoTag v1.1.22" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        Title="CrazyVideoTag v1.1.21" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -36,7 +35,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="VideoCardTemplate" DataType="{x:Type models:VideoItem}">
-            <Border Width="250" Height="240" Margin="9" Style="{StaticResource VideoCardStyle}" MouseLeftButtonDown="VideoCard_MouseLeftButtonDown" MouseRightButtonDown="VideoCard_MouseRightButtonDown">
+            <Border Width="250" Margin="9" Style="{StaticResource VideoCardStyle}" MouseLeftButtonDown="VideoCard_MouseLeftButtonDown" MouseRightButtonDown="VideoCard_MouseRightButtonDown">
                 <Border.RenderTransform>
                     <TranslateTransform Y="0" />
                 </Border.RenderTransform>
@@ -146,7 +145,7 @@
                     </StackPanel>
                 </Grid>
 
-                <TabControl x:Name="MainTabControl" Visibility="{Binding CurrentFolder, Converter={StaticResource NullVisibility}}" Margin="10">
+                <TabControl x:Name="MainTabControl" Visibility="{Binding CurrentFolder, Converter={StaticResource NullVisibility}}" Margin="10" SelectionChanged="MainTabControl_SelectionChanged">
                     <TabItem Header="文件夹">
                         <Grid Margin="0,10,0,0">
                             <Grid.ColumnDefinitions>
@@ -162,11 +161,11 @@
                                     </TreeView.Resources>
                                 </TreeView>
                             </Border>
-                            <ScrollViewer x:Name="FolderVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}">
+                            <ScrollViewer x:Name="FolderVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <controls:VirtualizingWrapPanel ItemWidth="268" ItemHeight="258" />
+                                            <WrapPanel />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>
@@ -190,11 +189,11 @@
                                     </StackPanel>
                                 </ScrollViewer>
                             </Border>
-                            <ScrollViewer x:Name="FilterVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}">
+                            <ScrollViewer x:Name="FilterVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <controls:VirtualizingWrapPanel ItemWidth="268" ItemHeight="258" />
+                                            <WrapPanel />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>

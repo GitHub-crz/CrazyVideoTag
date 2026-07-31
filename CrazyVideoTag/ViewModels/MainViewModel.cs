@@ -17,6 +17,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly FileOpenService _fileOpenService = new();
     private readonly FileDeleteService _fileDeleteService = new();
     private readonly CancellationTokenSource _shutdown = new();
+    private const int DisplayPageSize = 40;
+    private const int BackgroundLoadBatchSize = 40;
+    private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromSeconds(5);
     private AppSettings _settings = new();
     private AppState _state = new();
     private List<VideoItem> _allVideos = [];
@@ -58,6 +61,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand OpenSelectedVideoCommand { get; }
     public AsyncRelayCommand DeleteSelectedVideoCommand { get; }
     public RelayCommand SetCustomCoverCommand { get; }
+    public RelayCommand LoadMoreVideosCommand { get; }
     public RelayCommand CutCommand { get; }
     public AsyncRelayCommand PasteCommand { get; }
 
@@ -75,6 +79,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OpenSelectedVideoCommand = new RelayCommand(_ => OpenSelectedVideo(), _ => SelectedVideo is not null);
         DeleteSelectedVideoCommand = new AsyncRelayCommand(_ => DeleteSelectedVideoAsync(), _ => SelectedVideo is not null);
         SetCustomCoverCommand = new RelayCommand(_ => SetCustomCover(), _ => SelectedVideo is not null);
+        LoadMoreVideosCommand = new RelayCommand(_ => LoadMoreVideos(), _ => DisplayedVideos.Count < _currentDisplaySource.Count);
         CutCommand = new RelayCommand(_ => CutSelectedVideos(), _ => _selectedVideos.Count > 0);
         PasteCommand = new AsyncRelayCommand(_ => PasteVideosAsync(), _ => _cutVideos.Count > 0 && SelectedFolder is not null);
     }
@@ -174,7 +179,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetField(ref _isStartPageVisible, value);
     }
 
-    public string DisplayedCountText => $"共 {_currentDisplaySource.Count} 个视频";
+    public string DisplayedCountText => $"已加载 {DisplayedVideos.Count} / {_currentDisplaySource.Count} 个视频";
 
     public IReadOnlyList<SortModeOption> SortModeOptions { get; } =
     [
@@ -468,6 +473,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 FolderTreeRoots.Add(FolderRoot);
             }
 
+            LoadMoreVideos(1);
             OnPropertyChanged(nameof(DisplayedCountText));
             await SaveAsync();
         }
@@ -861,6 +867,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _currentDisplaySource = [];
         DisplayedVideos.Clear();
         OnPropertyChanged(nameof(DisplayedCountText));
+        LoadMoreVideosCommand.RaiseCanExecuteChanged();
         StatusText = "正在加载视频...";
 
         List<VideoItem> source;
@@ -911,12 +918,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         _currentDisplaySource = source;
-        DisplayedVideos.Clear();
-        foreach (var video in _currentDisplaySource)
-        {
-            DisplayedVideos.Add(video);
-        }
-
+        LoadMoreVideos();
+        _ = ContinueLoadingInBackgroundAsync(version, token);
         _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
         StatusText = $"已匹配 {source.Count} 个视频";
@@ -986,6 +989,74 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         return (string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath))
             && video.ThumbnailError is null;
+    }
+
+    private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);
+
+    private void LoadMoreVideos(int count)
+    {
+        var start = DisplayedVideos.Count;
+        var end = Math.Min(start + count, _currentDisplaySource.Count);
+        for (var index = start; index < end; index++)
+        {
+            DisplayedVideos.Add(_currentDisplaySource[index]);
+        }
+
+        LoadMoreVideosCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(DisplayedCountText));
+    }
+
+    private async Task ContinueLoadingInBackgroundAsync(int version, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == version)
+        {
+            if (DisplayedVideos.Count >= _currentDisplaySource.Count)
+            {
+                return;
+            }
+
+            try
+            {
+                await Task.Delay(BackgroundLoadInterval, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version)
+            {
+                return;
+            }
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count)
+                {
+                    return;
+                }
+
+                LoadMoreVideos(BackgroundLoadBatchSize);
+            });
+        }
+    }
+
+    public void TrimDisplayedVideos()
+    {
+        if (DisplayedVideos.Count <= DisplayPageSize)
+        {
+            return;
+        }
+
+        var kept = DisplayedVideos.Take(DisplayPageSize).ToList();
+        DisplayedVideos.Clear();
+        foreach (var item in kept)
+        {
+            DisplayedVideos.Add(item);
+        }
+
+        LoadMoreVideosCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(DisplayedCountText));
     }
 
     private static bool IsUnderFolderFast(VideoItem video, string folder)

@@ -38,6 +38,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _viewModel.TrimDisplayedVideos();
+    }
+
     private void VideoCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not VideoItem video)
@@ -85,6 +90,19 @@ public partial class MainWindow : Window
 
         element.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
         e.Handled = true;
+    }
+
+    private void VideoScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (sender is not ScrollViewer scrollViewer || e.VerticalChange <= 0)
+        {
+            return;
+        }
+
+        if (scrollViewer.ScrollableHeight - scrollViewer.VerticalOffset < 800 && _viewModel.LoadMoreVideosCommand.CanExecute(null))
+        {
+            _viewModel.LoadMoreVideosCommand.Execute(null);
+        }
     }
 
     private void TagRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
