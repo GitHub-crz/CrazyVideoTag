@@ -275,6 +275,29 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         SelectedFolder = FolderRoot;
         StatusText = $"扫描完成，共 {ScanCount} 个视频";
+        _ = GenerateThumbnailsAsync();
+    }
+
+    private async Task GenerateThumbnailsAsync()
+    {
+        var missing = _allVideos.Count(video => string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath));
+        if (missing == 0)
+        {
+            return;
+        }
+
+        ThumbnailTotal = missing;
+        ThumbnailCompleted = 0;
+        var progress = new Progress<ThumbnailProgress>(p =>
+        {
+            ThumbnailCompleted = p.Completed;
+            ThumbnailTotal = p.Total;
+            StatusText = $"正在生成封面 {p.Completed}/{p.Total}";
+        });
+
+        await _thumbnailService.GenerateMissingAsync(_allVideos, _state, progress, _shutdown.Token);
+        await SaveAsync();
+        StatusText = "封面生成完成";
     }
 
     private async Task GenerateSelectedThumbnailAsync()
@@ -920,75 +943,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _currentDisplaySource = source;
         LoadMoreVideos();
         _ = ContinueLoadingInBackgroundAsync(version, token);
-        _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
         StatusText = $"已匹配 {source.Count} 个视频";
         DisplayRefreshed?.Invoke();
-    }
-
-    private async Task GenerateDisplayedThumbnailsAsync(int displayVersion, CancellationToken cancellationToken)
-    {
-        ThumbnailCompleted = 0;
-        ThumbnailTotal = _currentDisplaySource.Count(video => IsMissingThumbnail(video));
-        if (ThumbnailTotal == 0)
-        {
-            return;
-        }
-
-        var attempted = new HashSet<VideoItem>();
-        var completed = 0;
-        var index = 0;
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == displayVersion)
-            {
-                var batch = new List<VideoItem>();
-                while (batch.Count < 2 && index < _currentDisplaySource.Count)
-                {
-                    var video = _currentDisplaySource[index++];
-                    if (IsMissingThumbnail(video) && !attempted.Contains(video))
-                    {
-                        attempted.Add(video);
-                        batch.Add(video);
-                    }
-                }
-
-                if (batch.Count == 0)
-                {
-                    break;
-                }
-
-                var tasks = batch
-                    .Select(video => Task.Run(() => _thumbnailService.GenerateForVideoAsync(video, _state, cancellationToken), cancellationToken))
-                    .ToArray();
-                var results = await Task.WhenAll(tasks).WaitAsync(cancellationToken);
-                completed += results.Count(result => result.Success);
-                ThumbnailCompleted = completed;
-
-                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != displayVersion)
-                {
-                    return;
-                }
-
-                try
-                {
-                    await Task.Delay(250, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    private static bool IsMissingThumbnail(VideoItem video)
-    {
-        return (string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath))
-            && video.ThumbnailError is null;
     }
 
     private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);
