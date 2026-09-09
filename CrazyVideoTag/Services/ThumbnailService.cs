@@ -42,20 +42,22 @@ public sealed class ThumbnailService
         });
     }
 
-    public async Task<ThumbnailResult> GenerateForVideoAsync(VideoItem video, AppState state, CancellationToken cancellationToken)
+    public async Task<ThumbnailResult> GenerateForVideoAsync(VideoItem video, AppState state, CancellationToken cancellationToken, double positionPercent = 50)
     {
         Directory.CreateDirectory(ThumbnailDirectory);
         video.IsGeneratingThumbnail = true;
         try
         {
             var info = new FileInfo(video.Path);
+            // Use a fresh file for every generation so FFmpeg never overwrites a JPG still held by WPF.
             var thumbnailPath = GetThumbnailPath(video.Path, info);
             var duration = await GetDurationAsync(state.FfprobePath, video.Path, cancellationToken);
             video.Duration = duration;
-            var timestamp = TimeSpan.FromSeconds(Math.Max(0.1, duration.TotalSeconds / 2));
+            var normalizedPercent = Math.Clamp(positionPercent, 1, 99);
+            var timestamp = TimeSpan.FromSeconds(Math.Max(0.1, duration.TotalSeconds * normalizedPercent / 100));
             var ratio = (ThumbnailWidth / (double)ThumbnailHeight).ToString(CultureInfo.InvariantCulture);
             var filter = $"scale='if(gt(a,{ratio}),-1,{ThumbnailWidth})':'if(gt(a,{ratio}),{ThumbnailHeight},-1)',crop={ThumbnailWidth}:{ThumbnailHeight}";
-            var arguments = $"-y -ss {FormatTime(timestamp)} -i {Quote(video.Path)} -frames:v 1 -vf {Quote(filter)} -q:v 3 {Quote(thumbnailPath)}";
+            var arguments = $"-y -ss {FormatTime(timestamp)} -i {Quote(video.Path)} -frames:v 1 -vf {Quote(filter)} -q:v 3 -update 1 {Quote(thumbnailPath)}";
             var ffmpeg = await RunProcessAsync(state.FfmpegPath, arguments, cancellationToken);
             if (ffmpeg.ExitCode != 0 || !File.Exists(thumbnailPath))
             {
@@ -96,7 +98,7 @@ public sealed class ThumbnailService
 
     private string GetThumbnailPath(string videoPath, FileInfo info)
     {
-        var key = $"{videoPath}|{info.Name}";
+        var key = $"{videoPath}|{info.Name}|{Guid.NewGuid():N}";
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
         var name = Convert.ToHexString(bytes).ToLowerInvariant() + ".jpg";
         return System.IO.Path.Combine(ThumbnailDirectory, name);

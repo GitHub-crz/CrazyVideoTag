@@ -1,0 +1,42 @@
+<Window x:Class="CrazyVideoTag.Views.ThumbnailPositionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="选择封面位置" Height="350" Width="520"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="{StaticResource Bg}">
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="选择视频进度" Foreground="{StaticResource TextStrong}" FontSize="17" FontWeight="SemiBold" />
+        <TextBlock Grid.Row="1" Text="从指定进度截取一帧作为当前视频封面。" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="0,8,0,14" />
+
+        <WrapPanel Grid.Row="2">
+            <Button Content="10%" Click="Preset_Click" Tag="10" MinWidth="68" />
+            <Button Content="30%" Click="Preset_Click" Tag="30" MinWidth="68" />
+            <Button Content="70%" Click="Preset_Click" Tag="70" MinWidth="68" />
+            <Button Content="90%" Click="Preset_Click" Tag="90" MinWidth="68" />
+        </WrapPanel>
+
+        <Grid Grid.Row="3" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="自定义比例" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" FontSize="13" />
+            <TextBox x:Name="PercentageBox" Grid.Column="1" Width="90" Height="38" Margin="12,0,6,0" Text="50" MaxLength="3" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="%（1-99）" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" FontSize="13" />
+        </Grid>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Content="取消" IsCancel="True" MinWidth="80" />
+            <Button Content="生成封面" Click="Confirm_Click" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" MinWidth="96" Margin="8,0,0,0" />
+        </StackPanel>
+    </Grid>
+</Window>

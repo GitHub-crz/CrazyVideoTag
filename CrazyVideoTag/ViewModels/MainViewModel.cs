@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using CrazyVideoTag.Models;
 using CrazyVideoTag.Services;
 
@@ -58,6 +59,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand ConfigureToolsCommand { get; }
     public RelayCommand ConfigureStorageCommand { get; }
     public AsyncRelayCommand GenerateSelectedThumbnailCommand { get; }
+    public AsyncRelayCommand GenerateThumbnailAtPositionCommand { get; }
     public RelayCommand OpenSelectedVideoCommand { get; }
     public AsyncRelayCommand DeleteSelectedVideoCommand { get; }
     public RelayCommand SetCustomCoverCommand { get; }
@@ -76,9 +78,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ConfigureToolsCommand = new RelayCommand(_ => ConfigureTools());
         ConfigureStorageCommand = new RelayCommand(_ => ConfigureStorage());
         GenerateSelectedThumbnailCommand = new AsyncRelayCommand(_ => GenerateSelectedThumbnailAsync(), _ => SelectedVideo is not null);
+        GenerateThumbnailAtPositionCommand = new AsyncRelayCommand(GenerateThumbnailAtPositionAsync, _ => SelectedVideo is not null);
         OpenSelectedVideoCommand = new RelayCommand(_ => OpenSelectedVideo(), _ => SelectedVideo is not null);
         DeleteSelectedVideoCommand = new AsyncRelayCommand(_ => DeleteSelectedVideoAsync(), _ => SelectedVideo is not null);
-        SetCustomCoverCommand = new RelayCommand(_ => SetCustomCover(), _ => SelectedVideo is not null);
+        SetCustomCoverCommand = new RelayCommand(SetCustomCover, parameter => parameter is VideoItem || SelectedVideo is not null);
         LoadMoreVideosCommand = new RelayCommand(_ => LoadMoreVideos(), _ => DisplayedVideos.Count < _currentDisplaySource.Count);
         CutCommand = new RelayCommand(_ => CutSelectedVideos(), _ => _selectedVideos.Count > 0);
         PasteCommand = new AsyncRelayCommand(_ => PasteVideosAsync(), _ => _cutVideos.Count > 0 && SelectedFolder is not null);
@@ -275,29 +278,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         SelectedFolder = FolderRoot;
         StatusText = $"扫描完成，共 {ScanCount} 个视频";
-        _ = GenerateThumbnailsAsync();
-    }
-
-    private async Task GenerateThumbnailsAsync()
-    {
-        var missing = _allVideos.Count(video => string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath));
-        if (missing == 0)
-        {
-            return;
-        }
-
-        ThumbnailTotal = missing;
-        ThumbnailCompleted = 0;
-        var progress = new Progress<ThumbnailProgress>(p =>
-        {
-            ThumbnailCompleted = p.Completed;
-            ThumbnailTotal = p.Total;
-            StatusText = $"正在生成封面 {p.Completed}/{p.Total}";
-        });
-
-        await _thumbnailService.GenerateMissingAsync(_allVideos, _state, progress, _shutdown.Token);
-        await SaveAsync();
-        StatusText = "封面生成完成";
     }
 
     private async Task GenerateSelectedThumbnailAsync()
@@ -307,7 +287,28 @@ public sealed class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        var result = await _thumbnailService.GenerateForVideoAsync(SelectedVideo, _state, _shutdown.Token);
+        var dialog = new Views.ThumbnailPositionDialog { Owner = System.Windows.Application.Current.MainWindow };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var result = await _thumbnailService.GenerateForVideoAsync(SelectedVideo, _state, _shutdown.Token, dialog.Percentage);
+        await SaveAsync();
+        if (!result.Success)
+        {
+            System.Windows.MessageBox.Show(result.Error ?? "生成封面失败。", "生成封面失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task GenerateThumbnailAtPositionAsync(object? parameter)
+    {
+        if (SelectedVideo is null || !double.TryParse(parameter?.ToString(), out var percentage))
+        {
+            return;
+        }
+
+        var result = await _thumbnailService.GenerateForVideoAsync(SelectedVideo, _state, _shutdown.Token, percentage);
         await SaveAsync();
         if (!result.Success)
         {
@@ -506,27 +507,38 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private void SetCustomCover()
+    private void SetCustomCover(object? parameter)
     {
-        if (SelectedVideo is null)
+        var video = parameter as VideoItem ?? SelectedVideo;
+        if (video is null)
         {
             return;
         }
 
-        using var dialog = new System.Windows.Forms.OpenFileDialog
+        if (!System.Windows.Clipboard.ContainsImage())
         {
-            Title = "选择视频封面图片",
-            Filter = "图片文件|*.jpg;*.jpeg;*.png;*.bmp;*.webp|所有文件|*.*",
-            CheckFileExists = true
-        };
+            System.Windows.MessageBox.Show("剪贴板中没有图片。请先复制一张图片，再执行设置封面。", "无法设置封面", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
 
-        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+        var image = System.Windows.Clipboard.GetImage();
+        if (image is null)
         {
             return;
         }
 
-        SelectedVideo.CustomCoverPath = dialog.FileName;
-        SaveVideoMetadata(SelectedVideo);
+        var coverDirectory = Path.Combine(GetStorageFolder(), "thumbs", "custom-covers");
+        Directory.CreateDirectory(coverDirectory);
+        var coverPath = Path.Combine(coverDirectory, $"custom-{Guid.NewGuid():N}.png");
+        using (var stream = File.Create(coverPath))
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            encoder.Save(stream);
+        }
+
+        video.CustomCoverPath = coverPath;
+        SaveVideoMetadata(video);
         _ = SaveAsync();
     }
 
@@ -943,9 +955,75 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _currentDisplaySource = source;
         LoadMoreVideos();
         _ = ContinueLoadingInBackgroundAsync(version, token);
+        _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
         StatusText = $"已匹配 {source.Count} 个视频";
         DisplayRefreshed?.Invoke();
+    }
+
+    private async Task GenerateDisplayedThumbnailsAsync(int displayVersion, CancellationToken cancellationToken)
+    {
+        ThumbnailCompleted = 0;
+        ThumbnailTotal = _currentDisplaySource.Count(video => IsMissingThumbnail(video));
+        if (ThumbnailTotal == 0)
+        {
+            return;
+        }
+
+        var attempted = new HashSet<VideoItem>();
+        var completed = 0;
+        var index = 0;
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == displayVersion)
+            {
+                var batch = new List<VideoItem>();
+                while (batch.Count < 2 && index < _currentDisplaySource.Count)
+                {
+                    var video = _currentDisplaySource[index++];
+                    if (IsMissingThumbnail(video) && !attempted.Contains(video))
+                    {
+                        attempted.Add(video);
+                        batch.Add(video);
+                    }
+                }
+
+                if (batch.Count == 0)
+                {
+                    break;
+                }
+
+                var tasks = batch
+                    .Select(video => Task.Run(() => _thumbnailService.GenerateForVideoAsync(video, _state, cancellationToken), cancellationToken))
+                    .ToArray();
+                var results = await Task.WhenAll(tasks).WaitAsync(cancellationToken);
+                completed += results.Count(result => result.Success);
+                ThumbnailCompleted = completed;
+
+                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != displayVersion)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await Task.Delay(250, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static bool IsMissingThumbnail(VideoItem video)
+    {
+        return (string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath))
+            && video.ThumbnailError is null;
     }
 
     private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);

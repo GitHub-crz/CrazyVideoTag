@@ -3,10 +3,30 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        Title="CrazyVideoTag v1.1.20" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.1.28" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
+        <Style x:Key="SearchTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="MinWidth" Value="220" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="ToolTip" Value="输入标题关键字后按回车或点击搜索" />
+        </Style>
+
+        <Style x:Key="SearchActionButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SearchPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
         <DataTemplate x:Key="TagChipTemplate" DataType="{x:Type models:TagDefinition}">
             <Border Background="{Binding Color, Converter={StaticResource ColorBrush}}" CornerRadius="6" Padding="8,3" Margin="0,0,5,5">
                 <TextBlock Text="{Binding Name}" Foreground="White" FontSize="11" FontWeight="SemiBold" />
@@ -41,7 +61,19 @@
                 </Border.RenderTransform>
                 <Border.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="设置封面图片..." Command="{Binding PlacementTarget.DataContext.SetCustomCoverCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="设置剪贴板图片为封面" Command="{Binding DataContext.SetCustomCoverCommand, Source={x:Reference RootWindow}}" CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <Separator />
+                        <MenuItem Header="生成指定位置封面">
+                            <MenuItem Header="10%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="10" />
+                            <MenuItem Header="20%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="20" />
+                            <MenuItem Header="30%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="30" />
+                            <MenuItem Header="40%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="40" />
+                            <MenuItem Header="50%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="50" />
+                            <MenuItem Header="60%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="60" />
+                            <MenuItem Header="70%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="70" />
+                            <MenuItem Header="80%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="80" />
+                            <MenuItem Header="90%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="90" />
+                        </MenuItem>
                     </ContextMenu>
                 </Border.ContextMenu>
                 <StackPanel Margin="9,9,9,12">
@@ -52,7 +84,12 @@
                                 <RectangleGeometry RadiusX="10" RadiusY="10" Rect="0,0,229,140" />
                             </Image.Clip>
                         </Image>
-                        <TextBlock Text="封面未生成" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}" />
+                        <Border Background="#161B24" CornerRadius="10" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="▶" FontSize="26" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
+                                <TextBlock Text="封面未生成" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
                         <ItemsControl ItemTemplate="{StaticResource TagChipTemplate}">
                             <ItemsControl.ItemsSource>
                                 <MultiBinding Converter="{StaticResource TagIdsToDefinitions}">
@@ -108,7 +145,9 @@
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="搜索" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="16,0,6,0" FontSize="13" />
-                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=Explicit}" MinWidth="180" VerticalAlignment="Center" ToolTip="输入标题关键字后按回车搜索" KeyDown="SearchBox_KeyDown" />
+                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=Explicit}" Style="{StaticResource SearchTextBoxStyle}" VerticalAlignment="Center" KeyDown="SearchBox_KeyDown" />
+                    <Button Content="清除" Click="ClearSearchButton_Click" Style="{StaticResource SearchActionButtonStyle}" ToolTip="清除搜索内容并刷新列表" />
+                    <Button Content="搜索" Click="SearchButton_Click" Style="{StaticResource SearchPrimaryButtonStyle}" ToolTip="按当前输入内容搜索" />
                     <TextBlock Text="排序" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="16,0,6,0" FontSize="13" />
                     <ComboBox ItemsSource="{Binding SortModeOptions}" DisplayMemberPath="Label" SelectedValuePath="Mode" SelectedValue="{Binding SortMode, Mode=TwoWay}" MinWidth="170" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding DisplayedCountText}" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="16,0,0,0" FontSize="13" />

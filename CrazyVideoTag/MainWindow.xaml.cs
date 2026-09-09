@@ -92,6 +92,20 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void SearchButton_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+        SearchBox.Focus();
+        SearchBox.CaretIndex = SearchBox.Text.Length;
+    }
+
+    private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Clear();
+        SearchBox.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+        SearchBox.Focus();
+    }
+
     private void VideoScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (sender is not ScrollViewer scrollViewer || e.VerticalChange <= 0)
