@@ -22,6 +22,30 @@ public sealed class ThumbnailService
         _storageFolder = string.IsNullOrWhiteSpace(storageFolder) ? AppContext.BaseDirectory : storageFolder;
     }
 
+    private static string PreviewDirectory => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CrazyVideoTagPreviews");
+
+    public async Task<string?> GeneratePreviewFrameAsync(VideoItem video, AppState state, double positionPercent, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(PreviewDirectory);
+        var info = new FileInfo(video.Path);
+        var normalizedPercent = (int)Math.Clamp(positionPercent, 1, 99);
+        var key = $"{video.Path}|{normalizedPercent}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
+        var previewPath = System.IO.Path.Combine(PreviewDirectory, hash + ".jpg");
+        if (File.Exists(previewPath))
+        {
+            return previewPath;
+        }
+
+        var duration = await GetDurationAsync(state.FfprobePath, video.Path, cancellationToken);
+        var timestamp = TimeSpan.FromSeconds(Math.Max(0.1, duration.TotalSeconds * normalizedPercent / 100));
+        var ratio = (ThumbnailWidth / (double)ThumbnailHeight).ToString(CultureInfo.InvariantCulture);
+        var filter = $"scale='if(gt(a,{ratio}),-1,{ThumbnailWidth})':'if(gt(a,{ratio}),{ThumbnailHeight},-1)',crop={ThumbnailWidth}:{ThumbnailHeight}";
+        var arguments = $"-y -ss {FormatTime(timestamp)} -i {Quote(video.Path)} -frames:v 1 -vf {Quote(filter)} -q:v 4 -update 1 {Quote(previewPath)}";
+        var result = await RunProcessAsync(state.FfmpegPath, arguments, cancellationToken);
+        return result.ExitCode == 0 && File.Exists(previewPath) ? previewPath : null;
+    }
+
     public async Task GenerateMissingAsync(IReadOnlyList<VideoItem> videos, AppState state, IProgress<ThumbnailProgress>? progress, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(ThumbnailDirectory);
@@ -157,7 +181,28 @@ public sealed class ThumbnailService
 
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (Exception)
+            {
+            }
+            throw;
+        }
+
         return new ProcessResult(process.ExitCode, output.ToString(), error.ToString());
     }
 

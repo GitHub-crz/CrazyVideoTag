@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.1.28" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.1.30" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -60,19 +60,19 @@
                     <TranslateTransform Y="0" />
                 </Border.RenderTransform>
                 <Border.ContextMenu>
-                    <ContextMenu>
+                    <ContextMenu Closed="PreviewContextMenu_Closed">
                         <MenuItem Header="设置剪贴板图片为封面" Command="{Binding DataContext.SetCustomCoverCommand, Source={x:Reference RootWindow}}" CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                         <Separator />
                         <MenuItem Header="生成指定位置封面">
-                            <MenuItem Header="10%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="10" />
-                            <MenuItem Header="20%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="20" />
-                            <MenuItem Header="30%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="30" />
-                            <MenuItem Header="40%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="40" />
-                            <MenuItem Header="50%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="50" />
-                            <MenuItem Header="60%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="60" />
-                            <MenuItem Header="70%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="70" />
-                            <MenuItem Header="80%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="80" />
-                            <MenuItem Header="90%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="90" />
+                            <MenuItem Header="10%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="10" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="20%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="20" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="30%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="30" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="40%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="40" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="50%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="50" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="60%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="60" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="70%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="70" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="80%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="80" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
+                            <MenuItem Header="90%" Command="{Binding DataContext.GenerateThumbnailAtPositionCommand, Source={x:Reference RootWindow}}" CommandParameter="90" MouseEnter="PercentageMenuItem_MouseEnter" MouseLeave="PercentageMenuItem_MouseLeave" />
                         </MenuItem>
                     </ContextMenu>
                 </Border.ContextMenu>

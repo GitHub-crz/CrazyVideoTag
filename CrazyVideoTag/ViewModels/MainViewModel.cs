@@ -41,6 +41,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _suppressFilterChanged;
     private readonly HashSet<VideoItem> _selectedVideos = [];
     private List<VideoItem> _cutVideos = [];
+    private CancellationTokenSource? _previewCts;
+    private readonly SemaphoreSlim _previewGate = new(1, 1);
+    private string _previewStatus = string.Empty;
+    private string? _previewImageSource;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -97,6 +101,62 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 RescanCommand.RaiseCanExecuteChanged();
             }
         }
+    }
+
+    public string PreviewStatus
+    {
+        get => _previewStatus;
+        private set => SetField(ref _previewStatus, value);
+    }
+
+    public string? PreviewImageSource
+    {
+        get => _previewImageSource;
+        private set => SetField(ref _previewImageSource, value);
+    }
+
+    public void PreviewThumbnailAt(double percentage)
+    {
+        var video = SelectedVideo;
+        if (video is null)
+        {
+            return;
+        }
+
+        _previewCts?.Cancel();
+        _previewCts?.Dispose();
+        _previewCts = new CancellationTokenSource();
+        var token = _previewCts.Token;
+        PreviewStatus = $"正在加载 {percentage:0}% 预览...";
+        PreviewImageSource = null;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _previewGate.WaitAsync(token);
+                try
+                {
+                    var path = await _thumbnailService.GeneratePreviewFrameAsync(video, _state, percentage, token);
+                    if (token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        PreviewImageSource = path;
+                        PreviewStatus = path is null ? "预览生成失败" : $"{percentage:0}% 预览";
+                    });
+                }
+                finally
+                {
+                    _previewGate.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }, token);
     }
 
     public FolderNode? FolderRoot
