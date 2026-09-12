@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.1.33" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.1.44" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -124,6 +124,27 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
+        <DataTemplate x:Key="PositionPreviewTemplate" DataType="{x:Type models:PositionPreviewItem}">
+            <Border Background="{StaticResource CardBg}" CornerRadius="10" Padding="8" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding Caption}" Foreground="{StaticResource TextMain}" FontSize="13" FontWeight="SemiBold" Margin="2,0,2,6" />
+                    <Border Background="#0C0E12" CornerRadius="8" Width="220" Height="138" Cursor="Hand" MouseLeftButtonDown="PositionPreviewImage_MouseLeftButtonDown">
+                        <Grid>
+                            <TextBlock Text="{Binding Status}" Foreground="{StaticResource TextMuted}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="12" Visibility="{Binding Status, Converter={StaticResource NullVisibility}}" />
+                            <Image Source="{Binding ImagePath}" Stretch="UniformToFill" Width="220" Height="138">
+                                <Image.Clip>
+                                    <RectangleGeometry RadiusX="8" RadiusY="8" Rect="0,0,220,138" />
+                                </Image.Clip>
+                            </Image>
+                            <Border Background="{StaticResource Accent}" CornerRadius="6" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6" Visibility="{Binding IsCover, Converter={StaticResource BoolVisibility}}">
+                                <TextBlock Text="当前封面" Foreground="White" FontSize="11" FontWeight="SemiBold" />
+                            </Border>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Background="{StaticResource Bg}">
@@ -234,30 +255,54 @@
                             </ScrollViewer>
                         </Grid>
                     </TabItem>
+
+                    <TabItem Header="标签">
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="260" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="14" Margin="0,0,10,0">
+                                <TabControl>
+                                    <TabItem Header="普通标签">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                            <StackPanel>
+                                                <Button Content="+ 添加标签" Command="{Binding AddTagCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,10" />
+                                                <ItemsControl ItemsSource="{Binding TagRows}" ItemTemplate="{StaticResource TagRowTemplate}" />
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </TabItem>
+                                    <TabItem Header="演员">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                            <StackPanel>
+                                                <Button Content="+ 添加演员" Command="{Binding AddActorCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,10" />
+                                                <ItemsControl ItemsSource="{Binding ActorRows}" ItemTemplate="{StaticResource TagRowTemplate}" />
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </TabItem>
+                                </TabControl>
+                            </Border>
+                            <ScrollViewer x:Name="TagVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
                 </TabControl>
             </Grid>
 
-            <Border Grid.Column="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1,0,0,0" Padding="16">
+            <Border Grid.Column="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1,0,0,0" Padding="12">
                 <DockPanel LastChildFill="True">
-                    <TextBlock DockPanel.Dock="Top" Text="标签功能区" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextStrong}" Margin="0,0,0,14" />
-                    <TabControl>
-                        <TabItem Header="普通标签">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <Button Content="+ 添加标签" Command="{Binding AddTagCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,10" />
-                                    <ItemsControl ItemsSource="{Binding TagRows}" ItemTemplate="{StaticResource TagRowTemplate}" />
-                                </StackPanel>
-                            </ScrollViewer>
-                        </TabItem>
-                        <TabItem Header="演员">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <Button Content="+ 添加演员" Command="{Binding AddActorCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,10" />
-                                    <ItemsControl ItemsSource="{Binding ActorRows}" ItemTemplate="{StaticResource TagRowTemplate}" />
-                                </StackPanel>
-                            </ScrollViewer>
-                        </TabItem>
-                    </TabControl>
+                    <TextBlock DockPanel.Dock="Top" Text="进度预览" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextStrong}" Margin="0,0,0,6" />
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedVideo.Title, TargetNullValue=点击视频查看进度预览, FallbackValue=点击视频查看进度预览}" Foreground="{StaticResource TextMuted}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,0,10" />
+                    <ScrollViewer x:Name="PositionPreviewScroller" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding PositionPreviews}" ItemTemplate="{StaticResource PositionPreviewTemplate}" />
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
         </Grid>

@@ -24,18 +24,32 @@ public sealed class ThumbnailService
 
     private static string PreviewDirectory => System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CrazyVideoTagPreviews");
 
-    public async Task<string?> GeneratePreviewFrameAsync(VideoItem video, AppState state, double positionPercent, CancellationToken cancellationToken)
+    public string? TryGetCachedPreviewPath(VideoItem video, double positionPercent)
     {
-        Directory.CreateDirectory(PreviewDirectory);
+        var previewPath = GetPreviewPath(video, positionPercent);
+        return File.Exists(previewPath) ? previewPath : null;
+    }
+
+    private static string GetPreviewPath(VideoItem video, double positionPercent)
+    {
         var info = new FileInfo(video.Path);
         var normalizedPercent = (int)Math.Clamp(positionPercent, 1, 99);
         var key = $"{video.Path}|{normalizedPercent}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
-        var previewPath = System.IO.Path.Combine(PreviewDirectory, hash + ".jpg");
-        if (File.Exists(previewPath))
+        return System.IO.Path.Combine(PreviewDirectory, hash + ".jpg");
+    }
+
+    public async Task<string?> GeneratePreviewFrameAsync(VideoItem video, AppState state, double positionPercent, CancellationToken cancellationToken)
+    {
+        var cachedPath = TryGetCachedPreviewPath(video, positionPercent);
+        if (cachedPath is not null)
         {
-            return previewPath;
+            return cachedPath;
         }
+
+        Directory.CreateDirectory(PreviewDirectory);
+        var previewPath = GetPreviewPath(video, positionPercent);
+        var normalizedPercent = (int)Math.Clamp(positionPercent, 1, 99);
 
         var duration = await GetDurationAsync(state.FfprobePath, video.Path, cancellationToken);
         var timestamp = TimeSpan.FromSeconds(Math.Max(0.1, duration.TotalSeconds * normalizedPercent / 100));
@@ -90,7 +104,7 @@ public sealed class ThumbnailService
                 return new ThumbnailResult(false, null, error);
             }
 
-            SetCache(state, video, info, thumbnailPath, null, video.Duration);
+            SetCache(state, video, info, thumbnailPath, null, video.Duration, normalizedPercent);
             return new ThumbnailResult(true, thumbnailPath, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -104,7 +118,31 @@ public sealed class ThumbnailService
         }
     }
 
-    private void SetCache(AppState state, VideoItem video, FileInfo info, string thumbnailPath, string? error, TimeSpan? duration)
+    public ThumbnailResult SetCoverFromPreview(VideoItem video, AppState state, double positionPercent)
+    {
+        var previewPath = TryGetCachedPreviewPath(video, positionPercent);
+        if (previewPath is null)
+        {
+            return new ThumbnailResult(false, null, "该进度的预览图尚未生成。");
+        }
+
+        try
+        {
+            Directory.CreateDirectory(ThumbnailDirectory);
+            var info = new FileInfo(video.Path);
+            var coverPath = GetThumbnailPath(video.Path, info);
+            File.Copy(previewPath, coverPath, overwrite: true);
+            SetCache(state, video, info, coverPath, null, video.Duration, (int)Math.Clamp(positionPercent, 1, 99));
+            return new ThumbnailResult(true, coverPath, null);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            video.ThumbnailError = ex.Message;
+            return new ThumbnailResult(false, null, ex.Message);
+        }
+    }
+
+    private void SetCache(AppState state, VideoItem video, FileInfo info, string thumbnailPath, string? error, TimeSpan? duration, double? positionPercent = null)
     {
         video.ThumbnailPath = error is null ? thumbnailPath : video.ThumbnailPath;
         video.ThumbnailError = error;
@@ -116,6 +154,7 @@ public sealed class ThumbnailService
             FileSize = info.Length,
             LastWriteTicks = info.LastWriteTimeUtc.Ticks,
             DurationSeconds = duration?.TotalSeconds,
+            PositionPercent = positionPercent,
             LastError = error
         };
     }

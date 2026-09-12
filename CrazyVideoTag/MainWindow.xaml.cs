@@ -29,7 +29,13 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = _viewModel;
         _viewModel.DisplayRefreshed += ScrollVideosToTop;
+        _viewModel.PositionPreviewsStarted += ScrollPositionPreviewsToTop;
         Loaded += async (_, _) => await _viewModel.InitializeAsync();
+    }
+
+    private void ScrollPositionPreviewsToTop()
+    {
+        Dispatcher.BeginInvoke(new Action(() => PositionPreviewScroller.ScrollToTop()), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void ScrollVideosToTop()
@@ -38,6 +44,7 @@ public partial class MainWindow : Window
         {
             FolderVideoScroller.ScrollToTop();
             FilterVideoScroller.ScrollToTop();
+            TagVideoScroller.ScrollToTop();
         }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
@@ -81,6 +88,15 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.DataContext is VideoItem video)
         {
             _viewModel.SelectedVideo = video;
+        }
+    }
+
+    private void PositionPreviewImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PositionPreviewItem item } && item.ImagePath is not null)
+        {
+            _viewModel.SetCoverFromPreviewItem(item);
+            e.Handled = true;
         }
     }
 

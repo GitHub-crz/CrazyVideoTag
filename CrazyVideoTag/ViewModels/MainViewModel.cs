@@ -45,6 +45,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly SemaphoreSlim _previewGate = new(1, 1);
     private string _previewStatus = string.Empty;
     private string? _previewImageSource;
+    private CancellationTokenSource? _positionPreviewCts;
+    private VideoItem? _positionPreviewVideo;
+    private bool _suppressCoverChanged;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -53,6 +56,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<SelectableTagViewModel> FilterTagRows { get; } = [];
     public ObservableCollection<SelectableTagViewModel> FilterActorRows { get; } = [];
     public ObservableCollection<TagDefinition> AllTagDefinitions { get; } = [];
+    public ObservableCollection<PositionPreviewItem> PositionPreviews { get; } = [];
 
     public RelayCommand ChooseFolderCommand { get; }
     public AsyncRelayCommand RescanCommand { get; }
@@ -73,6 +77,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public MainViewModel()
     {
+        for (var percentage = 5; percentage <= 95; percentage += 5)
+        {
+            var item = new PositionPreviewItem(percentage);
+            item.PropertyChanged += OnPositionPreviewChanged;
+            PositionPreviews.Add(item);
+        }
+
         ChooseFolderCommand = new RelayCommand(_ => ChooseFolder());
         RescanCommand = new AsyncRelayCommand(_ => ScanCurrentFolderAsync(), _ => Directory.Exists(CurrentFolder));
         AddTagCommand = new RelayCommand(_ => AddTag(TagKind.Normal));
@@ -159,6 +170,140 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }, token);
     }
 
+    public void SetCoverFromPreviewItem(PositionPreviewItem item)
+    {
+        if (item.IsCover)
+        {
+            return;
+        }
+
+        item.IsCover = true;
+    }
+
+    private void StartPositionPreviews(VideoItem video)
+    {
+        _positionPreviewCts?.Cancel();
+        _positionPreviewCts?.Dispose();
+        _positionPreviewCts = new CancellationTokenSource();
+        var token = _positionPreviewCts.Token;
+        _positionPreviewVideo = video;
+        PositionPreviewsStarted?.Invoke();
+
+        double? coverPercent = null;
+        if (_state.ThumbnailCache.TryGetValue(video.Path, out var cache) && cache.PositionPercent is { } storedPercent)
+        {
+            coverPercent = storedPercent;
+        }
+
+        var pending = new List<PositionPreviewItem>();
+        _suppressCoverChanged = true;
+        try
+        {
+            foreach (var item in PositionPreviews)
+            {
+                var cachedPath = _thumbnailService.TryGetCachedPreviewPath(video, item.Percentage);
+                item.ImagePath = cachedPath;
+                item.Status = cachedPath is null ? "生成中..." : null;
+                item.IsCover = coverPercent is not null && Math.Abs(item.Percentage - coverPercent.Value) < 0.5;
+                if (cachedPath is null)
+                {
+                    pending.Add(item);
+                }
+            }
+        }
+        finally
+        {
+            _suppressCoverChanged = false;
+        }
+
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var options = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = 2,
+                    CancellationToken = token
+                };
+
+                await Parallel.ForEachAsync(pending, options, async (item, ct) =>
+                {
+                    var path = await _thumbnailService.GeneratePreviewFrameAsync(video, _state, item.Percentage, ct);
+                    if (token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        item.ImagePath = path;
+                        item.Status = path is null ? "生成失败" : null;
+                    });
+                });
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }, token);
+    }
+
+    private void OnPositionPreviewChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressCoverChanged
+            || e.PropertyName != nameof(PositionPreviewItem.IsCover)
+            || sender is not PositionPreviewItem item
+            || !item.IsCover)
+        {
+            return;
+        }
+
+        var video = _positionPreviewVideo;
+        if (video is null)
+        {
+            return;
+        }
+
+        _suppressCoverChanged = true;
+        try
+        {
+            foreach (var other in PositionPreviews)
+            {
+                if (!ReferenceEquals(other, item))
+                {
+                    other.IsCover = false;
+                }
+            }
+        }
+        finally
+        {
+            _suppressCoverChanged = false;
+        }
+
+        var result = _thumbnailService.SetCoverFromPreview(video, _state, item.Percentage);
+        if (result.Success)
+        {
+            _ = SaveAsync();
+            return;
+        }
+
+        _suppressCoverChanged = true;
+        try
+        {
+            item.IsCover = false;
+        }
+        finally
+        {
+            _suppressCoverChanged = false;
+        }
+
+        System.Windows.MessageBox.Show(result.Error ?? "设置封面失败。", "设置封面失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
     public FolderNode? FolderRoot
     {
         get => _folderRoot;
@@ -190,6 +335,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             _selectedVideo = value;
             OnPropertyChanged();
+
+            if (value is not null)
+            {
+                StartPositionPreviews(value);
+            }
 
             SyncRightChecks();
             GenerateSelectedThumbnailCommand.RaiseCanExecuteChanged();
@@ -291,6 +441,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? DisplayRefreshed;
+    public event Action? PositionPreviewsStarted;
 
     private void ChooseFolder()
     {

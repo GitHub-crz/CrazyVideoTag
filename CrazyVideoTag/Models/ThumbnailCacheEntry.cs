@@ -8,5 +8,6 @@ public sealed class ThumbnailCacheEntry
     public long LastWriteTicks { get; set; }
     public long FileSize { get; set; }
     public double? DurationSeconds { get; set; }
+    public double? PositionPercent { get; set; }
     public string? LastError { get; set; }
 }
