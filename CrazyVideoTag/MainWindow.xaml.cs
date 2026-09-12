@@ -40,12 +40,7 @@ public partial class MainWindow : Window
 
     private void ScrollVideosToTop()
     {
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            FolderVideoScroller.ScrollToTop();
-            FilterVideoScroller.ScrollToTop();
-            TagVideoScroller.ScrollToTop();
-        }), System.Windows.Threading.DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(new Action(() => MainVideoScroller.ScrollToTop()), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void FolderTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -54,11 +49,6 @@ public partial class MainWindow : Window
         {
             _viewModel.SelectFolder(node);
         }
-    }
-
-    private void MainTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        _viewModel.TrimDisplayedVideos();
     }
 
     private void VideoCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

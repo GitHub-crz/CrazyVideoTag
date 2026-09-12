@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.1.44" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.1.46" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -200,14 +200,14 @@
                     </StackPanel>
                 </Grid>
 
-                <TabControl x:Name="MainTabControl" Visibility="{Binding CurrentFolder, Converter={StaticResource NullVisibility}}" Margin="10" SelectionChanged="MainTabControl_SelectionChanged">
-                    <TabItem Header="文件夹">
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="260" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="12" Margin="0,0,10,0">
+                <Grid Margin="10" Visibility="{Binding CurrentFolder, Converter={StaticResource NullVisibility}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="260" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="12" Margin="0,0,10,0">
+                        <TabControl x:Name="MainTabControl">
+                            <TabItem Header="文件夹">
                                 <TreeView x:Name="FolderTree" ItemsSource="{Binding FolderTreeRoots}" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0" SelectedItemChanged="FolderTree_SelectedItemChanged">
                                     <TreeView.Resources>
                                         <HierarchicalDataTemplate DataType="{x:Type models:FolderNode}" ItemsSource="{Binding Children}">
@@ -215,26 +215,8 @@
                                         </HierarchicalDataTemplate>
                                     </TreeView.Resources>
                                 </TreeView>
-                            </Border>
-                            <ScrollViewer x:Name="FolderVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
-                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Grid>
-                    </TabItem>
-
-                    <TabItem Header="筛选">
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="260" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="14" Margin="0,0,10,0">
+                            </TabItem>
+                            <TabItem Header="筛选">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <StackPanel>
                                         <TextBlock Text="普通标签（交集）" FontWeight="SemiBold" Foreground="{StaticResource TextStrong}" Margin="0,0,0,8" FontSize="13" />
@@ -243,29 +225,11 @@
                                         <ItemsControl ItemsSource="{Binding FilterActorRows}" ItemTemplate="{StaticResource FilterTagRowTemplate}" />
                                     </StackPanel>
                                 </ScrollViewer>
-                            </Border>
-                            <ScrollViewer x:Name="FilterVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
-                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Grid>
-                    </TabItem>
-
-                    <TabItem Header="标签">
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="260" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="14" Margin="0,0,10,0">
+                            </TabItem>
+                            <TabItem Header="标签">
                                 <TabControl>
                                     <TabItem Header="普通标签">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                                             <StackPanel>
                                                 <Button Content="+ 添加标签" Command="{Binding AddTagCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,10" />
                                                 <ItemsControl ItemsSource="{Binding TagRows}" ItemTemplate="{StaticResource TagRowTemplate}" />
@@ -273,7 +237,7 @@
                                         </ScrollViewer>
                                     </TabItem>
                                     <TabItem Header="演员">
-                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                                             <StackPanel>
                                                 <Button Content="+ 添加演员" Command="{Binding AddActorCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="12,6" HorizontalAlignment="Left" Margin="0,0,0,10" />
                                                 <ItemsControl ItemsSource="{Binding ActorRows}" ItemTemplate="{StaticResource TagRowTemplate}" />
@@ -281,19 +245,19 @@
                                         </ScrollViewer>
                                     </TabItem>
                                 </TabControl>
-                            </Border>
-                            <ScrollViewer x:Name="TagVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
-                                <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </Grid>
-                    </TabItem>
-                </TabControl>
+                            </TabItem>
+                        </TabControl>
+                    </Border>
+                    <ScrollViewer x:Name="MainVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                        <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
 
             <Border Grid.Column="1" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="1,0,0,0" Padding="12">

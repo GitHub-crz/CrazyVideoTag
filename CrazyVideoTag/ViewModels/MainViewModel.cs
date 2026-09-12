@@ -20,6 +20,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly CancellationTokenSource _shutdown = new();
     private const int DisplayPageSize = 40;
     private const int BackgroundLoadBatchSize = 40;
+    private const int BackgroundAutoLoadLimit = 400;
     private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromSeconds(5);
     private AppSettings _settings = new();
     private AppState _state = new();
@@ -1256,7 +1257,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == version)
         {
-            if (DisplayedVideos.Count >= _currentDisplaySource.Count)
+            if (DisplayedVideos.Count >= _currentDisplaySource.Count || DisplayedVideos.Count >= BackgroundAutoLoadLimit)
             {
                 return;
             }
@@ -1277,7 +1278,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count)
+                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count || DisplayedVideos.Count >= BackgroundAutoLoadLimit)
                 {
                     return;
                 }
@@ -1285,24 +1286,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 LoadMoreVideos(BackgroundLoadBatchSize);
             });
         }
-    }
-
-    public void TrimDisplayedVideos()
-    {
-        if (DisplayedVideos.Count <= DisplayPageSize)
-        {
-            return;
-        }
-
-        var kept = DisplayedVideos.Take(DisplayPageSize).ToList();
-        DisplayedVideos.Clear();
-        foreach (var item in kept)
-        {
-            DisplayedVideos.Add(item);
-        }
-
-        LoadMoreVideosCommand.RaiseCanExecuteChanged();
-        OnPropertyChanged(nameof(DisplayedCountText));
     }
 
     private static bool IsUnderFolderFast(VideoItem video, string folder)

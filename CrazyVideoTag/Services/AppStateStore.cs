@@ -12,6 +12,7 @@ public sealed class AppStateStore
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private string _storageFolder = AppContext.BaseDirectory;
 
     public string StorageFolder
@@ -36,13 +37,24 @@ public sealed class AppStateStore
 
     public async Task SaveAsync(AppState state)
     {
-        var directory = System.IO.Path.GetDirectoryName(StatePath);
-        if (!string.IsNullOrWhiteSpace(directory))
+        await _saveGate.WaitAsync().ConfigureAwait(false);
+        try
         {
-            Directory.CreateDirectory(directory);
-        }
+            var directory = System.IO.Path.GetDirectoryName(StatePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
-        await using var stream = File.Create(StatePath);
-        await JsonSerializer.SerializeAsync(stream, state, Options);
+            await Task.Run(async () =>
+            {
+                await using var stream = File.Create(StatePath);
+                await JsonSerializer.SerializeAsync(stream, state, Options).ConfigureAwait(false);
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
     }
 }
