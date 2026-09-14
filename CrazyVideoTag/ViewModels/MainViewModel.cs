@@ -19,9 +19,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly FileDeleteService _fileDeleteService = new();
     private readonly CancellationTokenSource _shutdown = new();
     private const int DisplayPageSize = 40;
-    private const int BackgroundLoadBatchSize = 40;
+    private const int ScrollLoadBatchSize = 8;
+    private const int BackgroundLoadBatchSize = 6;
     private const int BackgroundAutoLoadLimit = 400;
-    private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromMilliseconds(800);
     private AppSettings _settings = new();
     private AppState _state = new();
     private List<VideoItem> _allVideos = [];
@@ -101,7 +102,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OpenSelectedVideoCommand = new RelayCommand(_ => OpenSelectedVideo(), _ => SelectedVideo is not null);
         DeleteSelectedVideoCommand = new AsyncRelayCommand(_ => DeleteSelectedVideoAsync(), _ => SelectedVideo is not null);
         SetCustomCoverCommand = new RelayCommand(SetCustomCover, parameter => parameter is VideoItem || SelectedVideo is not null);
-        LoadMoreVideosCommand = new RelayCommand(_ => LoadMoreVideos(), _ => DisplayedVideos.Count < _currentDisplaySource.Count);
+        LoadMoreVideosCommand = new RelayCommand(_ => LoadMoreVideos(ScrollLoadBatchSize), _ => DisplayedVideos.Count < _currentDisplaySource.Count);
         CutCommand = new RelayCommand(_ => CutSelectedVideos(), _ => _selectedVideos.Count > 0);
         PasteCommand = new AsyncRelayCommand(_ => PasteVideosAsync(), _ => _cutVideos.Count > 0 && SelectedFolder is not null);
         RemoveFilterTagCommand = new RelayCommand(RemoveFilterTag, parameter => parameter is SelectableTagViewModel);
@@ -1198,7 +1199,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         _currentDisplaySource = source;
-        LoadMoreVideos();
+        LoadMoreVideos(DisplayPageSize);
         _ = ContinueLoadingInBackgroundAsync(version, token);
         _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
@@ -1270,8 +1271,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         return (string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath))
             && video.ThumbnailError is null;
     }
-
-    private void LoadMoreVideos() => LoadMoreVideos(DisplayPageSize);
 
     private void LoadMoreVideos(int count)
     {
