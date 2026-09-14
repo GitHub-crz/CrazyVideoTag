@@ -10,6 +10,7 @@ using CrazyVideoTag.ViewModels;
 using Application = System.Windows.Application;
 using Binding = System.Windows.Data.Binding;
 using Brush = System.Windows.Media.Brush;
+using Button = System.Windows.Controls.Button;
 using Color = System.Windows.Media.Color;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using Point = System.Windows.Point;
@@ -50,6 +51,15 @@ public partial class MainWindow : Window
         if (e.NewValue is FolderNode node)
         {
             _viewModel.SelectFolder(node);
+        }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { ContextMenu: { } menu } button)
+        {
+            menu.PlacementTarget = button;
+            menu.IsOpen = true;
         }
     }
 

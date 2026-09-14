@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.2.4" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.2.5" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -223,10 +223,17 @@
         <Border Grid.Row="0" Background="{StaticResource PanelBg}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,0,0,1" Padding="16,11">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
-                    <Button Content="选择 / 替换文件夹" Command="{Binding ChooseFolderCommand}" Style="{StaticResource PrimaryButtonStyle}" />
-                    <Button Content="重新扫描" Command="{Binding RescanCommand}" />
-                    <Button Content="配置 FFmpeg" Command="{Binding ConfigureToolsCommand}" />
-                    <Button Content="配置存储目录" Command="{Binding ConfigureStorageCommand}" />
+                    <Button x:Name="SettingsButton" Content="设置 ▾" Click="SettingsButton_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu Placement="Bottom">
+                                <MenuItem Header="选择 / 替换文件夹" Command="{Binding PlacementTarget.DataContext.ChooseFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="重新扫描" Command="{Binding PlacementTarget.DataContext.RescanCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <Separator />
+                                <MenuItem Header="配置 FFmpeg" Command="{Binding PlacementTarget.DataContext.ConfigureToolsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                <MenuItem Header="配置存储目录" Command="{Binding PlacementTarget.DataContext.ConfigureStorageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                     <Button Content="生成选中封面" Command="{Binding GenerateSelectedThumbnailCommand}" />
                     <Button Content="剪切" Command="{Binding CutCommand}" />
                     <Button Content="粘贴" Command="{Binding PasteCommand}" />
