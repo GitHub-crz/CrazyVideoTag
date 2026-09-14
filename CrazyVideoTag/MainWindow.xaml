@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.1.46" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.1.50" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -145,6 +145,43 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
+        <Style x:Key="ChipCloseButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#40FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="ActiveFilterChipTemplate" DataType="{x:Type vm:SelectableTagViewModel}">
+            <Border Background="{Binding Color, Converter={StaticResource ColorBrush}}" CornerRadius="6" Padding="8,3" Margin="0,0,6,6">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Button Content="×" Style="{StaticResource ChipCloseButtonStyle}" Command="{Binding DataContext.RemoveFilterTagCommand, Source={x:Reference RootWindow}}" CommandParameter="{Binding}" ToolTip="取消此筛选" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Background="{StaticResource Bg}">
@@ -188,7 +225,7 @@
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
-                <Grid Visibility="{Binding IsStartPageVisible, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}">
+                <Grid Visibility="{Binding IsStartPageVisible, Converter={StaticResource NullVisibility}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="480">
                         <Border HorizontalAlignment="Center" Width="76" Height="76" CornerRadius="20" Background="{StaticResource AccentSoft}" Margin="0,0,0,26">
                             <TextBlock Text="▶" FontSize="30" Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="4,0,0,0" />
@@ -207,7 +244,22 @@
                     </Grid.ColumnDefinitions>
                     <Border Background="{StaticResource PanelBg}" CornerRadius="14" Padding="12" Margin="0,0,10,0">
                         <TabControl x:Name="MainTabControl">
-                            <TabItem Header="文件夹">
+                            <TabItem Padding="6,6">
+                                <TabItem.Header>
+                                    <Border CornerRadius="6" Padding="14,6">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#35507A" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TabItem}}" Value="True">
+                                                        <Setter Property="Background" Value="#3E7BD9" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="文件夹" Foreground="White" FontWeight="SemiBold" />
+                                    </Border>
+                                </TabItem.Header>
                                 <TreeView x:Name="FolderTree" ItemsSource="{Binding FolderTreeRoots}" Background="Transparent" Foreground="{StaticResource TextMain}" BorderThickness="0" SelectedItemChanged="FolderTree_SelectedItemChanged">
                                     <TreeView.Resources>
                                         <HierarchicalDataTemplate DataType="{x:Type models:FolderNode}" ItemsSource="{Binding Children}">
@@ -216,7 +268,22 @@
                                     </TreeView.Resources>
                                 </TreeView>
                             </TabItem>
-                            <TabItem Header="筛选">
+                            <TabItem Padding="6,6">
+                                <TabItem.Header>
+                                    <Border CornerRadius="6" Padding="14,6">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#2F5C48" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TabItem}}" Value="True">
+                                                        <Setter Property="Background" Value="#2FA96F" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="筛选" Foreground="White" FontWeight="SemiBold" />
+                                    </Border>
+                                </TabItem.Header>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <StackPanel>
                                         <TextBlock Text="普通标签（交集）" FontWeight="SemiBold" Foreground="{StaticResource TextStrong}" Margin="0,0,0,8" FontSize="13" />
@@ -226,7 +293,22 @@
                                     </StackPanel>
                                 </ScrollViewer>
                             </TabItem>
-                            <TabItem Header="标签">
+                            <TabItem Padding="6,6">
+                                <TabItem.Header>
+                                    <Border CornerRadius="6" Padding="14,6">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#4A3E73" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TabItem}}" Value="True">
+                                                        <Setter Property="Background" Value="#7A5FD9" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="标签" Foreground="White" FontWeight="SemiBold" />
+                                    </Border>
+                                </TabItem.Header>
                                 <TabControl>
                                     <TabItem Header="普通标签">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
@@ -248,15 +330,29 @@
                             </TabItem>
                         </TabControl>
                     </Border>
-                    <ScrollViewer x:Name="MainVideoScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
-                        <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    <DockPanel Grid.Column="1">
+                        <Border DockPanel.Dock="Top" Background="{StaticResource PanelBg}" CornerRadius="10" Padding="10,8" Margin="0,0,0,10" Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolVisibility}}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="当前筛选" Foreground="{StaticResource TextMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,2" />
+                                <ItemsControl ItemsSource="{Binding ActiveFilterTags}" ItemTemplate="{StaticResource ActiveFilterChipTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </DockPanel>
+                        </Border>
+                        <ScrollViewer x:Name="MainVideoScroller" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                            <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
                 </Grid>
             </Grid>
 

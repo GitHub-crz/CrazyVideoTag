@@ -49,6 +49,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private CancellationTokenSource? _positionPreviewCts;
     private VideoItem? _positionPreviewVideo;
     private bool _suppressCoverChanged;
+    private bool _hasActiveFilters;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -58,6 +59,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<SelectableTagViewModel> FilterActorRows { get; } = [];
     public ObservableCollection<TagDefinition> AllTagDefinitions { get; } = [];
     public ObservableCollection<PositionPreviewItem> PositionPreviews { get; } = [];
+    public ObservableCollection<SelectableTagViewModel> ActiveFilterTags { get; } = [];
 
     public RelayCommand ChooseFolderCommand { get; }
     public AsyncRelayCommand RescanCommand { get; }
@@ -75,6 +77,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public RelayCommand LoadMoreVideosCommand { get; }
     public RelayCommand CutCommand { get; }
     public AsyncRelayCommand PasteCommand { get; }
+    public RelayCommand RemoveFilterTagCommand { get; }
 
     public MainViewModel()
     {
@@ -101,6 +104,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         LoadMoreVideosCommand = new RelayCommand(_ => LoadMoreVideos(), _ => DisplayedVideos.Count < _currentDisplaySource.Count);
         CutCommand = new RelayCommand(_ => CutSelectedVideos(), _ => _selectedVideos.Count > 0);
         PasteCommand = new AsyncRelayCommand(_ => PasteVideosAsync(), _ => _cutVideos.Count > 0 && SelectedFolder is not null);
+        RemoveFilterTagCommand = new RelayCommand(RemoveFilterTag, parameter => parameter is SelectableTagViewModel);
     }
 
     public string? CurrentFolder
@@ -355,6 +359,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _statusText;
         private set => SetField(ref _statusText, value);
+    }
+
+    public bool HasActiveFilters
+    {
+        get => _hasActiveFilters;
+        private set => SetField(ref _hasActiveFilters, value);
     }
 
     public string SearchText
@@ -767,6 +777,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ReplaceRows(FilterTagRows, _state.Tags.Where(tag => tag.Kind == TagKind.Normal).OrderBy(tag => tag.Name), OnFilterTagChanged);
         ReplaceRows(FilterActorRows, _state.Tags.Where(tag => tag.Kind == TagKind.Actor).OrderBy(tag => tag.SortOrder).ThenBy(tag => tag.Name), OnFilterTagChanged);
         SyncRightChecks();
+        RefreshActiveFilterTags();
     }
 
     private static void ReplaceRows(ObservableCollection<SelectableTagViewModel> rows, IEnumerable<TagDefinition> tags, EventHandler handler)
@@ -1000,6 +1011,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _suppressFilterChanged = false;
         }
+
+        RefreshActiveFilterTags();
+    }
+
+    private void RemoveFilterTag(object? parameter)
+    {
+        if (parameter is SelectableTagViewModel row)
+        {
+            row.IsChecked = false;
+        }
+    }
+
+    private void RefreshActiveFilterTags()
+    {
+        ActiveFilterTags.Clear();
+        foreach (var row in FilterTagRows.Where(filterRow => filterRow.IsChecked).Concat(FilterActorRows.Where(filterRow => filterRow.IsChecked)))
+        {
+            ActiveFilterTags.Add(row);
+        }
+
+        HasActiveFilters = ActiveFilterTags.Count > 0;
     }
 
     private void OnFilterTagChanged(object? sender, EventArgs e)
@@ -1009,6 +1041,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             return;
         }
 
+        RefreshActiveFilterTags();
         _ = RefreshDisplayedVideosAsync();
     }
 
