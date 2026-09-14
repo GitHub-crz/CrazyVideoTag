@@ -22,6 +22,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private const int ScrollLoadBatchSize = 8;
     private const int BackgroundLoadBatchSize = 6;
     private const int BackgroundAutoLoadLimit = 400;
+    public const int PageSize = 200;
     private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromMilliseconds(800);
     private AppSettings _settings = new();
     private AppState _state = new();
@@ -51,6 +52,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private VideoItem? _positionPreviewVideo;
     private bool _suppressCoverChanged;
     private bool _hasActiveFilters;
+    private int _currentPageNumber;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -61,6 +63,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<TagDefinition> AllTagDefinitions { get; } = [];
     public ObservableCollection<PositionPreviewItem> PositionPreviews { get; } = [];
     public ObservableCollection<SelectableTagViewModel> ActiveFilterTags { get; } = [];
+    public ObservableCollection<VideoPageItem> VideoPages { get; } = [];
 
     public RelayCommand ChooseFolderCommand { get; }
     public AsyncRelayCommand RescanCommand { get; }
@@ -1200,6 +1203,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         _currentDisplaySource = source;
         LoadMoreVideos(DisplayPageSize);
+        RefreshVideoPages();
         _ = ContinueLoadingInBackgroundAsync(version, token);
         _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
@@ -1270,6 +1274,53 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         return (string.IsNullOrWhiteSpace(video.ThumbnailPath) || !File.Exists(video.ThumbnailPath))
             && video.ThumbnailError is null;
+    }
+
+    private void RefreshVideoPages()
+    {
+        var totalPages = (_currentDisplaySource.Count + PageSize - 1) / PageSize;
+        while (VideoPages.Count > totalPages)
+        {
+            VideoPages.RemoveAt(VideoPages.Count - 1);
+        }
+
+        while (VideoPages.Count < totalPages)
+        {
+            VideoPages.Add(new VideoPageItem(VideoPages.Count + 1));
+        }
+
+        _currentPageNumber = 0;
+        SetCurrentPage(1);
+    }
+
+    public void SetCurrentPage(int pageNumber)
+    {
+        if (VideoPages.Count == 0)
+        {
+            _currentPageNumber = 0;
+            return;
+        }
+
+        pageNumber = Math.Clamp(pageNumber, 1, VideoPages.Count);
+        if (_currentPageNumber == pageNumber)
+        {
+            return;
+        }
+
+        _currentPageNumber = pageNumber;
+        foreach (var page in VideoPages)
+        {
+            page.IsCurrent = page.PageNumber == pageNumber;
+        }
+    }
+
+    public void EnsurePageLoaded(int pageNumber)
+    {
+        var targetCount = Math.Min(pageNumber * PageSize, _currentDisplaySource.Count);
+        if (DisplayedVideos.Count < targetCount)
+        {
+            LoadMoreVideos(targetCount - DisplayedVideos.Count);
+        }
     }
 
     private void LoadMoreVideos(int count)

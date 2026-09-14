@@ -213,7 +213,14 @@ public partial class MainWindow : Window
 
     private void VideoScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (sender is not ScrollViewer scrollViewer || e.VerticalChange <= 0)
+        if (sender is not ScrollViewer scrollViewer)
+        {
+            return;
+        }
+
+        UpdateCurrentPage();
+
+        if (e.VerticalChange <= 0)
         {
             return;
         }
@@ -222,6 +229,50 @@ public partial class MainWindow : Window
         {
             _viewModel.LoadMoreVideosCommand.Execute(null);
         }
+    }
+
+    private void PageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: VideoPageItem page })
+        {
+            return;
+        }
+
+        _viewModel.EnsurePageLoaded(page.PageNumber);
+        ScrollToVideoIndex((page.PageNumber - 1) * MainViewModel.PageSize);
+    }
+
+    private void ScrollToVideoIndex(int index)
+    {
+        if (index < 0 || index >= MainVideoItems.Items.Count)
+        {
+            return;
+        }
+
+        MainVideoItems.UpdateLayout();
+        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(index) is FrameworkElement container)
+        {
+            container.BringIntoView();
+        }
+    }
+
+    private void UpdateCurrentPage()
+    {
+        if (MainVideoItems.Items.Count == 0)
+        {
+            return;
+        }
+
+        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(0) is not FrameworkElement firstContainer || firstContainer.ActualHeight <= 0)
+        {
+            return;
+        }
+
+        var rowHeight = firstContainer.ActualHeight + 18;
+        var cardsPerRow = Math.Max(1, (int)(MainVideoScroller.ViewportWidth / 268));
+        var scrolledRows = (int)(MainVideoScroller.VerticalOffset / rowHeight);
+        var firstVisibleIndex = scrolledRows * cardsPerRow;
+        _viewModel.SetCurrentPage(firstVisibleIndex / MainViewModel.PageSize + 1);
     }
 
     private void TagRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

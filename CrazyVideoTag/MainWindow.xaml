@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.2.1" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.2.2" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -182,6 +182,36 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
+        <Style x:Key="PageButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Background" Value="#1F2630" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2A3442" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Accent}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Background="{StaticResource Bg}">
@@ -343,15 +373,32 @@
                                 </ItemsControl>
                             </DockPanel>
                         </Border>
-                        <ScrollViewer x:Name="MainVideoScroller" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
-                            <ItemsControl ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
-                        </ScrollViewer>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ScrollViewer x:Name="MainVideoScroller" VerticalScrollBarVisibility="Auto" ScrollChanged="VideoScrollViewer_ScrollChanged">
+                                <ItemsControl x:Name="MainVideoItems" ItemsSource="{Binding DisplayedVideos}" ItemTemplate="{StaticResource VideoCardTemplate}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <Border Grid.Column="1" Background="{StaticResource PanelBg}" CornerRadius="10" Padding="6" Margin="8,0,0,0">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding VideoPages}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:VideoPageItem}">
+                                                <Button Content="{Binding PageNumber}" Style="{StaticResource PageButtonStyle}" Click="PageButton_Click" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
                     </DockPanel>
                 </Grid>
             </Grid>
