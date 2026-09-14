@@ -21,8 +21,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private const int DisplayPageSize = 40;
     private const int ScrollLoadBatchSize = 8;
     private const int BackgroundLoadBatchSize = 6;
-    private const int BackgroundAutoLoadLimit = 400;
-    public const int PageSize = 200;
+    public const int PageSize = 100;
     private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromMilliseconds(800);
     private AppSettings _settings = new();
     private AppState _state = new();
@@ -1203,7 +1202,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         _currentDisplaySource = source;
         LoadMoreVideos(DisplayPageSize);
-        RefreshVideoPages();
+        ResetVideoPages();
         _ = ContinueLoadingInBackgroundAsync(version, token);
         _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
@@ -1276,9 +1275,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
             && video.ThumbnailError is null;
     }
 
-    private void RefreshVideoPages()
+    private void ResetVideoPages()
     {
-        var totalPages = (_currentDisplaySource.Count + PageSize - 1) / PageSize;
+        SyncVideoPages();
+        _currentPageNumber = 0;
+        SetCurrentPage(1);
+    }
+
+    private void SyncVideoPages()
+    {
+        var totalPages = (DisplayedVideos.Count + PageSize - 1) / PageSize;
         while (VideoPages.Count > totalPages)
         {
             VideoPages.RemoveAt(VideoPages.Count - 1);
@@ -1288,9 +1294,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             VideoPages.Add(new VideoPageItem(VideoPages.Count + 1));
         }
-
-        _currentPageNumber = 0;
-        SetCurrentPage(1);
     }
 
     public void SetCurrentPage(int pageNumber)
@@ -1334,13 +1337,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         LoadMoreVideosCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(DisplayedCountText));
+        SyncVideoPages();
     }
 
     private async Task ContinueLoadingInBackgroundAsync(int version, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested && _currentDisplayVersion == version)
         {
-            if (DisplayedVideos.Count >= _currentDisplaySource.Count || DisplayedVideos.Count >= BackgroundAutoLoadLimit)
+            if (DisplayedVideos.Count >= _currentDisplaySource.Count)
             {
                 return;
             }
@@ -1361,7 +1365,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count || DisplayedVideos.Count >= BackgroundAutoLoadLimit)
+                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version || DisplayedVideos.Count >= _currentDisplaySource.Count)
                 {
                     return;
                 }
