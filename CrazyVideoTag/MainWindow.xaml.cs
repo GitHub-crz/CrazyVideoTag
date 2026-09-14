@@ -12,6 +12,7 @@ using Binding = System.Windows.Data.Binding;
 using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Point = System.Windows.Point;
 using ToolTip = System.Windows.Controls.ToolTip;
 
 namespace CrazyVideoTag;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private SelectableTagViewModel? _tagDragSource;
     private bool _tagDragOccurred;
     private MenuItem? _previewToolTipItem;
+    private int _firstVisibleIndex;
 
     public MainWindow()
     {
@@ -218,7 +220,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        UpdateCurrentPage();
+        if (e.VerticalChange > 0)
+        {
+            UpdateCurrentPage(allowBackward: false);
+        }
+        else if (e.VerticalChange < 0)
+        {
+            UpdateCurrentPage(allowBackward: true);
+        }
 
         if (e.VerticalChange <= 0)
         {
@@ -250,29 +259,54 @@ public partial class MainWindow : Window
         }
 
         MainVideoItems.UpdateLayout();
-        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(index) is FrameworkElement container)
+        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(index) is not FrameworkElement container)
         {
-            container.BringIntoView();
+            return;
         }
+
+        var position = container.TransformToAncestor(MainVideoScroller).Transform(new Point(0, 0));
+        MainVideoScroller.ScrollToVerticalOffset(MainVideoScroller.VerticalOffset + position.Y);
+
+        _firstVisibleIndex = index;
+        _viewModel.SetCurrentPage(index / MainViewModel.PageSize + 1);
     }
 
-    private void UpdateCurrentPage()
+    private void UpdateCurrentPage(bool allowBackward)
     {
-        if (MainVideoItems.Items.Count == 0)
+        var count = MainVideoItems.Items.Count;
+        if (count == 0)
         {
             return;
         }
 
-        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(0) is not FrameworkElement firstContainer || firstContainer.ActualHeight <= 0)
+        var index = Math.Clamp(_firstVisibleIndex, 0, count - 1);
+
+        while (index < count - 1 && IsAboveViewportTop(index))
         {
-            return;
+            index++;
         }
 
-        var rowHeight = firstContainer.ActualHeight + 18;
-        var cardsPerRow = Math.Max(1, (int)(MainVideoScroller.ViewportWidth / 268));
-        var scrolledRows = (int)(MainVideoScroller.VerticalOffset / rowHeight);
-        var firstVisibleIndex = scrolledRows * cardsPerRow;
-        _viewModel.SetCurrentPage(firstVisibleIndex / MainViewModel.PageSize + 1);
+        if (allowBackward)
+        {
+            while (index > 0 && !IsAboveViewportTop(index - 1))
+            {
+                index--;
+            }
+        }
+
+        _firstVisibleIndex = index;
+        _viewModel.SetCurrentPage(index / MainViewModel.PageSize + 1);
+    }
+
+    private bool IsAboveViewportTop(int index)
+    {
+        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(index) is not FrameworkElement element)
+        {
+            return false;
+        }
+
+        var position = element.TransformToAncestor(MainVideoScroller).Transform(new Point(0, 0));
+        return position.Y + element.ActualHeight <= 0;
     }
 
     private void TagRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
