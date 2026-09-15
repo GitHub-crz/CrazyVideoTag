@@ -21,7 +21,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private const int DisplayPageSize = 40;
     private const int ScrollLoadBatchSize = 8;
     private const int BackgroundLoadBatchSize = 6;
-    private const int RestoreBatchSize = 40;
     public const int PageSize = 100;
     private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromMilliseconds(800);
     private AppSettings _settings = new();
@@ -53,8 +52,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _suppressCoverChanged;
     private bool _hasActiveFilters;
     private int _currentPageNumber;
-    private bool _searchActive;
-    private int _loadedCountBeforeSearch;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -1147,14 +1144,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var selectedNormal = FilterTagRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var selectedActors = FilterActorRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var searchText = SearchText.Trim();
-        var hasSearch = !string.IsNullOrWhiteSpace(searchText);
-        var exitingSearch = _searchActive && !hasSearch;
-        if (hasSearch && !_searchActive)
-        {
-            _loadedCountBeforeSearch = DisplayedVideos.Count;
-        }
-
-        _searchActive = hasSearch;
         var folderPath = SelectedFolder?.Path;
         var allVideos = _allVideos;
 
@@ -1212,14 +1201,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         _currentDisplaySource = source;
-        var restoreCount = exitingSearch ? Math.Max(DisplayPageSize, _loadedCountBeforeSearch) : DisplayPageSize;
         LoadMoreVideos(DisplayPageSize);
         ResetVideoPages();
-        if (restoreCount > DisplayPageSize)
-        {
-            _ = RestoreLoadedCountAsync(version, token, restoreCount);
-        }
-
         _ = ContinueLoadingInBackgroundAsync(version, token);
         _ = GenerateDisplayedThumbnailsAsync(version, token);
         OnPropertyChanged(nameof(DisplayedCountText));
@@ -1389,38 +1372,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
                 LoadMoreVideos(BackgroundLoadBatchSize);
             });
-        }
-    }
-
-    private async Task RestoreLoadedCountAsync(int version, CancellationToken cancellationToken, int targetCount)
-    {
-        while (!cancellationToken.IsCancellationRequested
-               && _currentDisplayVersion == version
-               && DisplayedVideos.Count < targetCount
-               && DisplayedVideos.Count < _currentDisplaySource.Count)
-        {
-            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                if (cancellationToken.IsCancellationRequested || _currentDisplayVersion != version)
-                {
-                    return;
-                }
-
-                var remaining = Math.Min(RestoreBatchSize, targetCount - DisplayedVideos.Count);
-                if (remaining > 0)
-                {
-                    LoadMoreVideos(remaining);
-                }
-            }, System.Windows.Threading.DispatcherPriority.Background);
-
-            try
-            {
-                await Task.Delay(40, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
         }
     }
 
