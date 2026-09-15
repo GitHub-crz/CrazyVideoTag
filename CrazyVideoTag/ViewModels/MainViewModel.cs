@@ -52,6 +52,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _suppressCoverChanged;
     private bool _hasActiveFilters;
     private int _currentPageNumber;
+    private bool _searchActive;
+    private int _loadedCountBeforeSearch;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -1144,6 +1146,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var selectedNormal = FilterTagRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var selectedActors = FilterActorRows.Where(row => row.IsChecked).Select(row => row.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var searchText = SearchText.Trim();
+        var hasSearch = !string.IsNullOrWhiteSpace(searchText);
+        var exitingSearch = _searchActive && !hasSearch;
+        if (hasSearch && !_searchActive)
+        {
+            _loadedCountBeforeSearch = DisplayedVideos.Count;
+        }
+
+        _searchActive = hasSearch;
         var folderPath = SelectedFolder?.Path;
         var allVideos = _allVideos;
 
@@ -1201,7 +1211,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
 
         _currentDisplaySource = source;
-        LoadMoreVideos(DisplayPageSize);
+        LoadMoreVideos(exitingSearch ? Math.Max(DisplayPageSize, _loadedCountBeforeSearch) : DisplayPageSize);
         ResetVideoPages();
         _ = ContinueLoadingInBackgroundAsync(version, token);
         _ = GenerateDisplayedThumbnailsAsync(version, token);
