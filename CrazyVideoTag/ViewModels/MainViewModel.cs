@@ -21,6 +21,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private const int DisplayPageSize = 40;
     private const int ScrollLoadBatchSize = 8;
     private const int BackgroundLoadBatchSize = 6;
+    private const int PageLoadBatchSize = 40;
     public const int PageSize = 100;
     private static readonly TimeSpan BackgroundLoadInterval = TimeSpan.FromMilliseconds(800);
     private AppSettings _settings = new();
@@ -850,6 +851,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void SelectFolder(FolderNode folder)
     {
         ClearFilterChecks();
+        ClearSelection();
         SelectedFolder = folder;
         SelectedVideo = null;
         PasteCommand.RaiseCanExecuteChanged();
@@ -1099,21 +1101,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private IEnumerable<VideoItem> GetTagTargets()
     {
+        if (_selectedVideos.Count > 0)
+        {
+            return _selectedVideos;
+        }
+
         if (SelectedVideo is not null)
         {
-            yield return SelectedVideo;
-            yield break;
+            return [SelectedVideo];
         }
 
         if (SelectedFolder is null)
         {
-            yield break;
+            return [];
         }
 
-        foreach (var video in _allVideos.Where(video => IsUnderFolder(video, SelectedFolder.Path)))
-        {
-            yield return video;
-        }
+        return _allVideos.Where(video => IsUnderFolder(video, SelectedFolder.Path));
     }
 
     private void SyncRightChecks()
@@ -1317,12 +1320,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public void EnsurePageLoaded(int pageNumber)
+    public async Task EnsurePageLoadedAsync(int pageNumber)
     {
         var targetCount = Math.Min(pageNumber * PageSize, _currentDisplaySource.Count);
-        if (DisplayedVideos.Count < targetCount)
+        while (DisplayedVideos.Count < targetCount)
         {
-            LoadMoreVideos(targetCount - DisplayedVideos.Count);
+            var remaining = Math.Min(PageLoadBatchSize, targetCount - DisplayedVideos.Count);
+            LoadMoreVideos(remaining);
+            await Task.Delay(20);
         }
     }
 

@@ -250,14 +250,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private void PageButton_Click(object sender, RoutedEventArgs e)
+    private async void PageButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: VideoPageItem page })
         {
             return;
         }
 
-        _viewModel.EnsurePageLoaded(page.PageNumber);
+        await _viewModel.EnsurePageLoadedAsync(page.PageNumber);
         ScrollToVideoIndex((page.PageNumber - 1) * MainViewModel.PageSize);
     }
 
@@ -289,16 +289,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var index = Math.Clamp(_firstVisibleIndex, 0, count - 1);
+        var index = Math.Clamp(EstimateFirstVisibleIndex(), 0, count - 1);
 
-        while (index < count - 1 && IsAboveViewportTop(index))
+        var forwardSteps = 80;
+        while (index < count - 1 && forwardSteps-- > 0 && IsAboveViewportTop(index))
         {
             index++;
         }
 
         if (allowBackward)
         {
-            while (index > 0 && !IsAboveViewportTop(index - 1))
+            var backwardSteps = 80;
+            while (index > 0 && backwardSteps-- > 0 && !IsAboveViewportTop(index - 1))
             {
                 index--;
             }
@@ -306,6 +308,33 @@ public partial class MainWindow : Window
 
         _firstVisibleIndex = index;
         _viewModel.SetCurrentPage(index / MainViewModel.PageSize + 1);
+    }
+
+    private int EstimateFirstVisibleIndex()
+    {
+        var count = MainVideoItems.Items.Count;
+        var perRow = Math.Max(1, (int)(MainVideoScroller.ViewportWidth / 268));
+        if (perRow >= count)
+        {
+            return 0;
+        }
+
+        if (MainVideoItems.ItemContainerGenerator.ContainerFromIndex(0) is not FrameworkElement first
+            || MainVideoItems.ItemContainerGenerator.ContainerFromIndex(perRow) is not FrameworkElement secondRow)
+        {
+            return _firstVisibleIndex;
+        }
+
+        var firstTop = first.TransformToAncestor(MainVideoScroller).Transform(new Point(0, 0)).Y;
+        var secondTop = secondRow.TransformToAncestor(MainVideoScroller).Transform(new Point(0, 0)).Y;
+        var rowHeight = secondTop - firstTop;
+        if (rowHeight <= 1)
+        {
+            rowHeight = first.ActualHeight + 18;
+        }
+
+        var rows = (int)(MainVideoScroller.VerticalOffset / rowHeight);
+        return Math.Clamp(rows * perRow, 0, count - 1);
     }
 
     private bool IsAboveViewportTop(int index)
