@@ -51,7 +51,8 @@ public sealed class ThumbnailService
         var previewPath = GetPreviewPath(video, positionPercent);
         var normalizedPercent = (int)Math.Clamp(positionPercent, 1, 99);
 
-        var duration = await GetDurationAsync(state.FfprobePath, video.Path, cancellationToken);
+        var mediaInfo = await GetMediaInfoAsync(state.FfprobePath, video.Path, cancellationToken);
+        var duration = mediaInfo.Duration;
         var timestamp = TimeSpan.FromSeconds(Math.Max(0.1, duration.TotalSeconds * normalizedPercent / 100));
         var ratio = (ThumbnailWidth / (double)ThumbnailHeight).ToString(CultureInfo.InvariantCulture);
         var filter = $"scale='if(gt(a,{ratio}),-1,{ThumbnailWidth})':'if(gt(a,{ratio}),{ThumbnailHeight},-1)',crop={ThumbnailWidth}:{ThumbnailHeight}";
@@ -89,8 +90,11 @@ public sealed class ThumbnailService
             var info = new FileInfo(video.Path);
             // Use a fresh file for every generation so FFmpeg never overwrites a JPG still held by WPF.
             var thumbnailPath = GetThumbnailPath(video.Path, info);
-            var duration = await GetDurationAsync(state.FfprobePath, video.Path, cancellationToken);
+            var mediaInfo = await GetMediaInfoAsync(state.FfprobePath, video.Path, cancellationToken);
+            var duration = mediaInfo.Duration;
             video.Duration = duration;
+            video.Width = mediaInfo.Width;
+            video.Height = mediaInfo.Height;
             var normalizedPercent = Math.Clamp(positionPercent, 1, 99);
             var timestamp = TimeSpan.FromSeconds(Math.Max(0.1, duration.TotalSeconds * normalizedPercent / 100));
             var ratio = (ThumbnailWidth / (double)ThumbnailHeight).ToString(CultureInfo.InvariantCulture);
@@ -105,6 +109,7 @@ public sealed class ThumbnailService
             }
 
             SetCache(state, video, info, thumbnailPath, null, video.Duration, normalizedPercent);
+            ClearCustomCover(video, state);
             return new ThumbnailResult(true, thumbnailPath, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -133,6 +138,7 @@ public sealed class ThumbnailService
             var coverPath = GetThumbnailPath(video.Path, info);
             File.Copy(previewPath, coverPath, overwrite: true);
             SetCache(state, video, info, coverPath, null, video.Duration, (int)Math.Clamp(positionPercent, 1, 99));
+            ClearCustomCover(video, state);
             return new ThumbnailResult(true, coverPath, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -143,8 +149,7 @@ public sealed class ThumbnailService
     }
 
     private void SetCache(AppState state, VideoItem video, FileInfo info, string thumbnailPath, string? error, TimeSpan? duration, double? positionPercent = null)
-    {
-        video.ThumbnailPath = error is null ? thumbnailPath : video.ThumbnailPath;
+    {        video.ThumbnailPath = error is null ? thumbnailPath : video.ThumbnailPath;
         video.ThumbnailError = error;
         state.ThumbnailCache[video.Path] = new ThumbnailCacheEntry
         {
@@ -155,8 +160,24 @@ public sealed class ThumbnailService
             LastWriteTicks = info.LastWriteTimeUtc.Ticks,
             DurationSeconds = duration?.TotalSeconds,
             PositionPercent = positionPercent,
+            Width = video.Width,
+            Height = video.Height,
             LastError = error
         };
+    }
+
+    private static void ClearCustomCover(VideoItem video, AppState state)
+    {
+        if (string.IsNullOrWhiteSpace(video.CustomCoverPath))
+        {
+            return;
+        }
+
+        video.CustomCoverPath = null;
+        if (state.Videos.TryGetValue(video.Path, out var metadata))
+        {
+            metadata.CustomCoverPath = null;
+        }
     }
 
     private string GetThumbnailPath(string videoPath, FileInfo info)
@@ -172,21 +193,65 @@ public sealed class ThumbnailService
         return System.IO.Path.GetRelativePath(_storageFolder, thumbnailPath);
     }
 
-    private static async Task<TimeSpan> GetDurationAsync(string ffprobePath, string videoPath, CancellationToken cancellationToken)
+    private static async Task<(TimeSpan Duration, int Width, int Height)> GetMediaInfoAsync(string ffprobePath, string videoPath, CancellationToken cancellationToken)
     {
-        var arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {Quote(videoPath)}";
+        var arguments = $"-v error -select_streams v:0 -show_entries stream=width,height -show_entries format=duration -of default=noprint_wrappers=1 {Quote(videoPath)}";
         var result = await RunProcessAsync(ffprobePath, arguments, cancellationToken);
         if (result.ExitCode != 0)
         {
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? "ffprobe 读取时长失败。" : result.Error.Trim());
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? "ffprobe 读取视频信息失败。" : result.Error.Trim());
         }
 
-        if (!double.TryParse(result.Output.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) || seconds <= 0)
+        var width = 0;
+        var height = 0;
+        double? seconds = null;
+        foreach (var line in result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = line.Split('=', 2);
+            if (parts.Length != 2)
+            {
+                continue;
+            }
+
+            switch (parts[0])
+            {
+                case "width":
+                    _ = int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out width);
+                    break;
+                case "height":
+                    _ = int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out height);
+                    break;
+                case "duration":
+                    if (double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                    {
+                        seconds = parsed;
+                    }
+                    break;
+            }
+        }
+
+        if (seconds is not > 0)
         {
             throw new InvalidOperationException("ffprobe 返回的视频时长无效。");
         }
 
-        return TimeSpan.FromSeconds(seconds);
+        return (TimeSpan.FromSeconds(seconds.Value), width, height);
+    }
+
+    public async Task<(TimeSpan Duration, int Width, int Height)?> ProbeMediaInfoAsync(VideoItem video, AppState state, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await GetMediaInfoAsync(state.FfprobePath, video.Path, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     private static async Task<ProcessResult> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken)

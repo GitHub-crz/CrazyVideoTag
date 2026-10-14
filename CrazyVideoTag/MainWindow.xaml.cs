@@ -195,7 +195,46 @@ public partial class MainWindow : Window
         if (e.Key == Key.Delete && _viewModel.DeleteSelectedVideoCommand.CanExecute(null))
         {
             _viewModel.DeleteSelectedVideoCommand.Execute(null);
+            return;
         }
+
+        TryHandleSearchDigit(e);
+    }
+
+    private void TryHandleSearchDigit(System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Handled
+            || Keyboard.Modifiers != ModifierKeys.None
+            || Keyboard.FocusedElement is System.Windows.Controls.TextBox)
+        {
+            return;
+        }
+
+        var digit = GetDigitCharacter(e.Key);
+        if (digit is null)
+        {
+            return;
+        }
+
+        SearchBox.Focus();
+        SearchBox.SetCurrentValue(System.Windows.Controls.TextBox.TextProperty, SearchBox.Text + digit.Value);
+        SearchBox.CaretIndex = SearchBox.Text.Length;
+        e.Handled = true;
+    }
+
+    private static char? GetDigitCharacter(Key key)
+    {
+        if (key is >= Key.D0 and <= Key.D9)
+        {
+            return (char)('0' + (key - Key.D0));
+        }
+
+        if (key is >= Key.NumPad0 and <= Key.NumPad9)
+        {
+            return (char)('0' + (key - Key.NumPad0));
+        }
+
+        return null;
     }
 
     private void SearchBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)

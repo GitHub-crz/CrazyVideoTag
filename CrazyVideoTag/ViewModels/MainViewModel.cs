@@ -39,6 +39,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private int _thumbnailTotal;
     private int _currentDisplayVersion;
     private CancellationTokenSource? _backgroundLoadCts;
+    private CancellationTokenSource? _mediaInfoCts;
     private bool _isStartPageVisible = true;
     private bool _suppressRightTagChanged;
     private bool _suppressFilterChanged;
@@ -504,6 +505,68 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         SelectedFolder = FolderRoot;
         StatusText = $"扫描完成，共 {ScanCount} 个视频";
+        StartMediaInfoFill();
+    }
+
+    private void StartMediaInfoFill()
+    {
+        _mediaInfoCts?.Cancel();
+        _mediaInfoCts?.Dispose();
+        _mediaInfoCts = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
+        _ = FillMissingMediaInfoAsync(_mediaInfoCts.Token);
+    }
+
+    private async Task FillMissingMediaInfoAsync(CancellationToken cancellationToken)
+    {
+        var targets = _allVideos.Where(video => video.Width is null or <= 0).ToList();
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        var updated = 0;
+        var options = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = 2,
+            CancellationToken = cancellationToken
+        };
+
+        try
+        {
+            await Parallel.ForEachAsync(targets, options, async (video, ct) =>
+            {
+                var mediaInfo = await _thumbnailService.ProbeMediaInfoAsync(video, _state, ct);
+                if (mediaInfo is not { } info)
+                {
+                    return;
+                }
+
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    video.Duration = info.Duration;
+                    video.Width = info.Width;
+                    video.Height = info.Height;
+                    if (_state.ThumbnailCache.TryGetValue(video.Path, out var cache))
+                    {
+                        cache.DurationSeconds = info.Duration.TotalSeconds;
+                        cache.Width = info.Width;
+                        cache.Height = info.Height;
+                    }
+                });
+
+                Interlocked.Increment(ref updated);
+                await Task.Delay(50, ct);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (updated > 0)
+        {
+            await SaveAsync();
+        }
     }
 
     private async Task GenerateSelectedThumbnailAsync()

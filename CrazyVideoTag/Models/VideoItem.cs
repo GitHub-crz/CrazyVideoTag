@@ -11,6 +11,8 @@ public sealed class VideoItem : INotifyPropertyChanged
     private string? _thumbnailError;
     private bool _isGeneratingThumbnail;
     private TimeSpan? _duration;
+    private int? _width;
+    private int? _height;
 
     public string Path { get; init; } = string.Empty;
     public string Title => System.IO.Path.GetFileName(Path);
@@ -80,7 +82,34 @@ public sealed class VideoItem : INotifyPropertyChanged
 
     public string SizeText => FormatSize(Size);
     public string DurationText => Duration is null ? "--:--" : FormatDuration(Duration.Value);
-    public string InfoText => $"{ModifiedAt:yyyy-MM-dd HH:mm}  ·  {SizeText}  ·  {DurationText}";
+    public string ResolutionText => Width is > 0 && Height is > 0 ? $"{Width}×{Height}" : "--";
+    public string InfoText => $"{ModifiedAt:yyyy-MM-dd}  ·  {SizeText}  ·  {DurationText}  ·  {ResolutionText}";
+
+    public int? Width
+    {
+        get => _width;
+        set
+        {
+            if (SetField(ref _width, value))
+            {
+                OnPropertyChanged(nameof(ResolutionText));
+                OnPropertyChanged(nameof(InfoText));
+            }
+        }
+    }
+
+    public int? Height
+    {
+        get => _height;
+        set
+        {
+            if (SetField(ref _height, value))
+            {
+                OnPropertyChanged(nameof(ResolutionText));
+                OnPropertyChanged(nameof(InfoText));
+            }
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

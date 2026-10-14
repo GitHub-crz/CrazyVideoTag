@@ -57,6 +57,12 @@ public sealed class VideoScanner
                     {
                         video.Duration = TimeSpan.FromSeconds(cache.DurationSeconds.Value);
                     }
+
+                    if (cache.Width is > 0 && cache.Height is > 0)
+                    {
+                        video.Width = cache.Width;
+                        video.Height = cache.Height;
+                    }
                 }
 
                 videos.Add(video);
