@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:CrazyVideoTag.Models"
         xmlns:vm="clr-namespace:CrazyVideoTag.ViewModels"
-        x:Name="RootWindow" Title="CrazyVideoTag v1.2.15" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
+        x:Name="RootWindow" Title="CrazyVideoTag v1.2.20" Height="860" Width="1320" MinHeight="720" MinWidth="1080"
         Background="{StaticResource Bg}"
         KeyDown="Window_KeyDown">
     <Window.Resources>
@@ -55,7 +55,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="VideoCardTemplate" DataType="{x:Type models:VideoItem}">
-            <Border Width="250" Margin="9" Style="{StaticResource VideoCardStyle}" MouseLeftButtonDown="VideoCard_MouseLeftButtonDown" MouseRightButtonDown="VideoCard_MouseRightButtonDown">
+            <Border Width="270" Margin="9" Style="{StaticResource VideoCardStyle}" MouseLeftButtonDown="VideoCard_MouseLeftButtonDown" MouseRightButtonDown="VideoCard_MouseRightButtonDown">
                 <Border.RenderTransform>
                     <TranslateTransform Y="0" />
                 </Border.RenderTransform>
@@ -77,11 +77,11 @@
                     </ContextMenu>
                 </Border.ContextMenu>
                 <StackPanel Margin="9,9,9,12">
-                    <Grid Width="229" Height="140">
+                    <Grid Width="249" Height="140">
                         <Border Background="#0C0E12" CornerRadius="10" />
-                        <Image Source="{Binding EffectiveThumbnailPath}" Stretch="UniformToFill" Width="229" Height="140">
+                        <Image Source="{Binding EffectiveThumbnailPath}" Stretch="UniformToFill" Width="249" Height="140">
                             <Image.Clip>
-                                <RectangleGeometry RadiusX="10" RadiusY="10" Rect="0,0,229,140" />
+                                <RectangleGeometry RadiusX="10" RadiusY="10" Rect="0,0,249,140" />
                             </Image.Clip>
                         </Image>
                         <Border Background="#161B24" CornerRadius="10" Visibility="{Binding EffectiveThumbnailPath, Converter={StaticResource NullVisibility}, ConverterParameter=Invert}">
@@ -120,7 +120,7 @@
                         </ItemsControl>
                     </Grid>
                     <TextBlock Text="{Binding Title}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMain}" FontSize="14" FontWeight="SemiBold" LineHeight="19" MaxHeight="42" Margin="2,10,2,0" />
-                    <TextBlock Text="{Binding InfoText}" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="2,5,2,0" />
+                    <TextBlock Text="{Binding InfoText}" Foreground="{StaticResource TextMuted}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="2,5,2,0" />
                 </StackPanel>
             </Border>
         </DataTemplate>

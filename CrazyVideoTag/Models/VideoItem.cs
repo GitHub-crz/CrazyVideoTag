@@ -82,8 +82,12 @@ public sealed class VideoItem : INotifyPropertyChanged
 
     public string SizeText => FormatSize(Size);
     public string DurationText => Duration is null ? "--:--" : FormatDuration(Duration.Value);
-    public string ResolutionText => Width is > 0 && Height is > 0 ? $"{Width}×{Height}" : "--";
-    public string InfoText => $"{ModifiedAt:yyyy-MM-dd}  ·  {SizeText}  ·  {DurationText}  ·  {ResolutionText}";
+
+    /// <summary>分辨率简称：取宽高中较小的数值加 P，1920×1080 与 1080×1920 均显示 <c>1080P</c>。</summary>
+    public string ResolutionText => Width is > 0 && Height is > 0 ? $"{Math.Min(Width.Value, Height.Value)}P" : "--";
+
+    /// <summary>卡片信息行：日期时间 · 大小 · 时长 · 分辨率。</summary>
+    public string InfoText => $"{FormatModifiedAt(ModifiedAt)} · {SizeText} · {DurationText} · {ResolutionText}";
 
     public int? Width
     {
@@ -119,6 +123,14 @@ public sealed class VideoItem : INotifyPropertyChanged
         OnPropertyChanged(nameof(ActorIds));
     }
 
+    /// <summary>
+    /// 压缩修改时间：年份固定两位、月日去掉前导零，形如 <c>26-6-17 12:34</c>。
+    /// </summary>
+    private static string FormatModifiedAt(DateTime modifiedAt)
+    {
+        return $"{modifiedAt.Year % 100}-{modifiedAt.Month}-{modifiedAt.Day} {modifiedAt:HH:mm}";
+    }
+
     private static string FormatSize(long bytes)
     {
         string[] units = ["B", "KB", "MB", "GB", "TB"];
@@ -130,9 +142,10 @@ public sealed class VideoItem : INotifyPropertyChanged
             unitIndex++;
         }
 
-        return unitIndex == 0 ? $"{value:0} {units[unitIndex]}" : $"{value:0.##} {units[unitIndex]}";
+        return unitIndex == 0 ? $"{value:0} {units[unitIndex]}" : $"{value:0.#} {units[unitIndex]}";
     }
 
+    /// <summary>时长：跨小时用 <c>h:mm:ss</c>，一小时以内用 <c>mm:ss</c>。</summary>
     private static string FormatDuration(TimeSpan duration)
     {
         return duration.TotalHours >= 1
