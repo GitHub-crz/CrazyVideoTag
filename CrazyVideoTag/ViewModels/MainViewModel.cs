@@ -390,7 +390,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>读取当前选中文件夹所在磁盘的可用空间；未选中文件夹时回退到视频根目录。</summary>
-    public void RefreshDiskSpace()
+    public void RefreshDiskSpace(bool showRefreshing = false)
     {
         var folder = SelectedFolder?.Path;
         if (string.IsNullOrWhiteSpace(folder))
@@ -404,6 +404,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
             DiskSpaceText = string.Empty;
             DiskSpaceToolTip = string.Empty;
             return;
+        }
+
+        if (showRefreshing)
+        {
+            DiskSpaceText = "刷新中…";
         }
 
         _ = Task.Run(() =>

@@ -65,7 +65,12 @@ public partial class MainWindow : Window
 
     private void DiskSpaceChip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        _viewModel.RefreshDiskSpace();
+        _viewModel.RefreshDiskSpace(showRefreshing: true);
+    }
+
+    private void DiskSpaceRefreshButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.RefreshDiskSpace(showRefreshing: true);
     }
 
     private void VideoCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
