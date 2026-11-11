@@ -54,6 +54,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _suppressCoverChanged;
     private bool _hasActiveFilters;
     private int _currentPageNumber;
+    private string _diskSpaceText = string.Empty;
+    private string _diskSpaceToolTip = string.Empty;
+    private int _diskSpaceVersion;
 
     public ObservableCollection<VideoItem> DisplayedVideos { get; } = [];
     public ObservableCollection<FolderNode> FolderTreeRoots { get; } = [];
@@ -120,6 +123,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (SetField(ref _currentFolder, value))
             {
                 RescanCommand.RaiseCanExecuteChanged();
+                RefreshDiskSpace();
             }
         }
     }
@@ -327,6 +331,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             if (SetField(ref _selectedFolder, value))
             {
+                RefreshDiskSpace();
                 _ = RefreshDisplayedVideosAsync();
                 SyncRightChecks();
             }
@@ -370,6 +375,108 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _hasActiveFilters;
         private set => SetField(ref _hasActiveFilters, value);
+    }
+
+    public string DiskSpaceText
+    {
+        get => _diskSpaceText;
+        private set => SetField(ref _diskSpaceText, value);
+    }
+
+    public string DiskSpaceToolTip
+    {
+        get => _diskSpaceToolTip;
+        private set => SetField(ref _diskSpaceToolTip, value);
+    }
+
+    /// <summary>读取当前选中文件夹所在磁盘的可用空间；未选中文件夹时回退到视频根目录。</summary>
+    public void RefreshDiskSpace()
+    {
+        var folder = SelectedFolder?.Path;
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            folder = CurrentFolder;
+        }
+
+        var version = Interlocked.Increment(ref _diskSpaceVersion);
+        if (string.IsNullOrWhiteSpace(folder))
+        {
+            DiskSpaceText = string.Empty;
+            DiskSpaceToolTip = string.Empty;
+            return;
+        }
+
+        _ = Task.Run(() =>
+        {
+            string text;
+            string toolTip;
+            try
+            {
+                var root = System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(folder));
+                if (string.IsNullOrWhiteSpace(root))
+                {
+                    ApplyDiskSpace(version, string.Empty, string.Empty);
+                    return;
+                }
+
+                var drive = new DriveInfo(root);
+                if (!drive.IsReady)
+                {
+                    ApplyDiskSpace(version, "磁盘未就绪", folder);
+                    return;
+                }
+
+                var available = drive.AvailableFreeSpace;
+                var total = drive.TotalSize;
+                var label = drive.Name.TrimEnd('\\', '/', ':');
+                text = $"{(label.Length == 1 ? label + " 盘" : "磁盘")}剩余 {FormatDiskSize(available)}";
+                toolTip = $"选中文件夹：{folder}\n磁盘：{drive.Name}\n总容量 {FormatDiskSize(total)} · 可用 {FormatDiskSize(available)} · 已用 {FormatDiskSize(Math.Max(0, total - available))}\n点击刷新";
+            }
+            catch (Exception)
+            {
+                text = "磁盘空间不可用";
+                toolTip = $"选中文件夹：{folder}\n点击刷新";
+            }
+
+            ApplyDiskSpace(version, text, toolTip);
+        });
+    }
+
+    private void ApplyDiskSpace(int version, string text, string toolTip)
+    {
+        if (Volatile.Read(ref _diskSpaceVersion) != version)
+        {
+            return;
+        }
+
+        try
+        {
+            System.Windows.Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                if (Volatile.Read(ref _diskSpaceVersion) == version)
+                {
+                    DiskSpaceText = text;
+                    DiskSpaceToolTip = toolTip;
+                }
+            });
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private static string FormatDiskSize(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB", "TB", "PB"];
+        var value = (double)Math.Max(0, bytes);
+        var index = 0;
+        while (value >= 1024 && index < units.Length - 1)
+        {
+            value /= 1024;
+            index++;
+        }
+
+        return $"{value:0.#} {units[index]}";
     }
 
     public string SearchText
@@ -789,6 +896,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             LoadMoreVideos(1);
             OnPropertyChanged(nameof(DisplayedCountText));
             await SaveAsync();
+            RefreshDiskSpace();
         }
         catch (Exception ex)
         {
@@ -1054,6 +1162,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         _ = RefreshDisplayedVideosAsync();
         await SaveAsync();
+        RefreshDiskSpace();
 
         if (skipped.Count > 0)
         {

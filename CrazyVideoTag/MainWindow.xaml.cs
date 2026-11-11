@@ -63,6 +63,11 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DiskSpaceChip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _viewModel.RefreshDiskSpace();
+    }
+
     private void VideoCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not VideoItem video)
